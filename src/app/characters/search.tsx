@@ -256,7 +256,7 @@ export default function CharacterSearch() {
                     <div className="font-medium text-sm">{c.name}</div>
                     {c.mediaTitle && (
                       <div className="text-xs text-gray-600 dark:text-gray-400">
-                        From: {c.mediaTitle}
+                        {c.mediaTitle}
                       </div>
                     )}
                     {typeof c.popularity === "number" && (
