@@ -189,7 +189,6 @@ export default function CharacterSearch() {
                   <div className="font-semibold">{c.name}</div>
                   {c.mediaTitle && (
                     <div className="text-xs text-gray-600 dark:text-gray-400">
-                      <span className="opacity-60">From: </span>
                       {c.mediaTitle}
                     </div>
                   )}
