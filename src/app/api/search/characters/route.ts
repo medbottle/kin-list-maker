@@ -26,6 +26,7 @@ export async function POST(req: Request) {
       .from("characters")
       .select("id, name, image_url, source, external_id, popularity, media_title")
       .ilike("name", `%${trimmed}%`)
+      .order("popularity", { ascending: false, nullsFirst: false })
       .order("name")
       .limit(25);
 
