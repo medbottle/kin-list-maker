@@ -59,28 +59,64 @@ async function fetchCharactersPage(page, perPage = 50) {
   return data.data.Page;
 }
 
-async function getExistingCharacterIds() {
+async function getExistingCharacterNames() {
   const { data, error } = await supabase
     .from("characters")
-    .select("external_id")
-    .eq("source", "AniList")
-    .not("external_id", "is", null);
+    .select("name");
 
   if (error) {
-    console.warn("Could not fetch existing character IDs:", error.message);
+    console.error("Could not fetch existing character names:", error);
     return new Set();
   }
 
-  return new Set(data?.map((row) => row.external_id) || []);
+  if (!data || data.length === 0) {
+    console.log("No existing characters found in database.");
+    return new Set();
+  }
+
+  // Get all character names, normalize to lowercase for case-insensitive comparison
+  // Filter out null/undefined/empty names
+  const names = data
+    .map((row) => {
+      const name = row.name;
+      return name && typeof name === "string" && name.trim() !== "" 
+        ? name.trim().toLowerCase() 
+        : null;
+    })
+    .filter((name) => name != null);
+
+  console.log(`Loaded ${names.length} existing character names (sample: ${names.slice(0, 5).join(", ")})`);
+  return new Set(names);
+}
+
+function getStartingPage() {
+  const args = process.argv.slice(2);
+  if (args.length === 0) {
+    return 1; // Default to page 1
+  }
+
+  const pageArg = args[0];
+  const pageNum = parseInt(pageArg, 10);
+
+  if (isNaN(pageNum) || pageNum < 1) {
+    console.error(`Invalid page number: "${pageArg}". Must be a positive integer.`);
+    console.error("Usage: node sync-anilist-characters.mjs [starting_page]");
+    console.error("Example: node sync-anilist-characters.mjs 5");
+    process.exit(1);
+  }
+
+  return pageNum;
 }
 
 async function run() {
-  console.log("Loading existing character IDs from database...");
-  const existingIds = await getExistingCharacterIds();
-  console.log(`Found ${existingIds.size} existing characters in database.`);
-  console.log("Starting sync from newest characters (page 1)...\n");
+  const startingPage = getStartingPage();
+  
+  console.log("Loading existing character names from database...");
+  const existingNames = await getExistingCharacterNames();
+  console.log(`Found ${existingNames.size} existing characters in database.`);
+  console.log(`Starting sync from page ${startingPage}...\n`);
 
-  let page = 1;
+  let page = startingPage;
   const perPage = 50;
   let lastPageLogged = false;
   let totalNew = 0;
@@ -115,56 +151,61 @@ async function run() {
 
     if (!characters.length) break;
 
-    // Check if all characters in this page already exist
-    const characterIds = characters.map((c) => String(c.id));
-    const allExist = characterIds.every((id) => existingIds.has(id));
+    // Filter out characters without names first
+    const charactersWithNames = characters.filter((c) => c.name?.full);
+
+    if (charactersWithNames.length === 0) {
+      console.log(`Skipping page ${page} - no characters with names`);
+      if (!pageInfo.hasNextPage) break;
+      page += 1;
+      continue;
+    }
+
+    // Check if all characters in this page already exist by name
+    const characterNames = charactersWithNames.map((c) => 
+      c.name.full.trim().toLowerCase()
+    );
+    const existingCount = characterNames.filter((name) => existingNames.has(name)).length;
+    const allExist = existingCount === characterNames.length;
 
     if (allExist) {
-      console.log(`All characters on page ${page} already exist. Stopping sync.`);
+      console.log(`All ${characterNames.length} characters on page ${page} already exist. Stopping sync.`);
       break;
     }
 
-    // Filter out existing characters and process only new ones
-    const newCharacters = characters.filter((c) => !existingIds.has(String(c.id)));
+    // Filter out existing characters by name and process only new ones
+    const newCharacters = charactersWithNames.filter((c) => 
+      !existingNames.has(c.name.full.trim().toLowerCase())
+    );
 
     if (newCharacters.length === 0) {
       console.log(`Page ${page}: All characters already exist. Stopping sync.`);
       break;
     }
 
-    console.log(`Page ${page}: Found ${newCharacters.length} new characters (${characters.length - newCharacters.length} already exist)`);
+    console.log(`Page ${page}: Found ${newCharacters.length} new characters (${existingCount} already exist)`);
 
-    const rows = newCharacters
-      .filter((c) => c.name?.full) // Filter out characters without names
-      .map((c) => {
-        const primaryMedia = c.media?.nodes?.[0] ?? null;
-        const mediaTitle =
-          primaryMedia?.title?.english ||
-          primaryMedia?.title?.romaji ||
-          primaryMedia?.title?.native ||
-          null;
+    const rows = newCharacters.map((c) => {
+      const primaryMedia = c.media?.nodes?.[0] ?? null;
+      const mediaTitle =
+        primaryMedia?.title?.english ||
+        primaryMedia?.title?.romaji ||
+        primaryMedia?.title?.native ||
+        null;
 
-        const name = c.name?.full || `Character ${c.id}`;
+      const name = c.name.full.trim();
 
-        return {
-          name,
-          image_url: c.image?.large ?? null,
-          source: "AniList",
-          external_id: String(c.id),
-          popularity: c.favourites ?? null,
-          media_id: primaryMedia?.id ?? null,
-          media_title: mediaTitle,
-          media_type: primaryMedia?.type ?? null,
-        };
-      })
-      .filter((row) => row.name);
-
-    if (rows.length === 0) {
-      console.log(`Skipping page ${page} - no valid characters with names`);
-      if (!pageInfo.hasNextPage) break;
-      page += 1;
-      continue;
-    }
+      return {
+        name,
+        image_url: c.image?.large ?? null,
+        source: "AniList",
+        external_id: String(c.id),
+        popularity: c.favourites ?? null,
+        media_id: primaryMedia?.id ?? null,
+        media_title: mediaTitle,
+        media_type: primaryMedia?.type ?? null,
+      };
+    });
 
     const { error } = await supabase
       .from("characters")
@@ -175,12 +216,16 @@ async function run() {
       break;
     }
 
-    // Add newly inserted IDs to the existing set to avoid re-checking
-    rows.forEach((row) => existingIds.add(row.external_id));
+    // Add newly inserted names to the existing set to avoid re-checking
+    rows.forEach((row) => existingNames.add(row.name.trim().toLowerCase()));
     totalNew += rows.length;
-    totalSkipped += characters.length - newCharacters.length;
+    totalSkipped += charactersWithNames.length - newCharacters.length;
 
-    console.log(`✓ Inserted/upserted ${rows.length} characters`);
+    console.log(`✓ Inserted/upserted ${rows.length} characters:`);
+    rows.forEach((row) => {
+      const mediaInfo = row.media_title ? ` (${row.media_title})` : "";
+      console.log(`  - ${row.name}${mediaInfo}`);
+    });
 
     if (!pageInfo.hasNextPage) {
       console.log("Reached last page.");
