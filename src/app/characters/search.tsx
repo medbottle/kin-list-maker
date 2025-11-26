@@ -1,5 +1,6 @@
 "use client";
 
+ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
@@ -205,11 +206,15 @@ export default function CharacterSearch() {
                 className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 transform transition-transform duration-200 hover:scale-105 hover:shadow-md"
               >
                 {c.image && (
-                  <img
+                  <div className="relative w-full h-64">
+                    <Image
                     src={c.image}
                     alt={c.name}
-                    className="w-full h-64 object-cover rounded-md"
+                      fill
+                      sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"
+                      className="object-cover rounded-md"
                   />
+                  </div>
                 )}
                 <div className="flex-1 space-y-1">
                   <div className="font-semibold">{c.name}</div>
