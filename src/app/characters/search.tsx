@@ -7,7 +7,8 @@ type CharacterResult = {
   id: number | null;
   name: string;
   image: string | null;
-  source: string;
+  popularity?: number | null;
+  mediaTitle?: string | null;
 };
 
 export default function CharacterSearch() {
@@ -49,7 +50,6 @@ export default function CharacterSearch() {
     const { error } = await supabase.from("characters").insert({
       name: c.name,
       image_url: c.image,
-      source: c.source,
       external_id: c.id ?? null,
     });
 
@@ -68,7 +68,6 @@ export default function CharacterSearch() {
       id: null,
       name: manualName,
       image: null,
-      source: "Manual",
     });
 
     setManualName("");
@@ -112,7 +111,7 @@ export default function CharacterSearch() {
       <div className="space-y-4">
         {results.map((c) => (
           <div
-            key={c.id + c.source}
+            key={c.id}
             className="border p-4 rounded flex gap-4 items-center"
           >
             {c.image && (
@@ -121,7 +120,17 @@ export default function CharacterSearch() {
 
             <div className="flex-1">
               <div className="font-bold">{c.name}</div>
-              <div className="text-sm opacity-70">{c.source}</div>
+              {c.mediaTitle && (
+                <div className="text-sm opacity-80">
+                  <span className="opacity-60">From: </span>
+                  {c.mediaTitle}
+                </div>
+              )}
+              <div className="text-xs opacity-60 mt-1">
+                {typeof c.popularity === "number" && (
+                  <div>Popularity: {c.popularity}</div>
+                )}
+              </div>
             </div>
 
             <button
