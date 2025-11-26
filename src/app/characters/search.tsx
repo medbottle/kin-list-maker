@@ -5,7 +5,7 @@ import { supabase } from "../../lib/supabase";
 
 export default function CharacterSearch() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<{ id: string | null; name: string; image: string | null; source: string; }[]>([]);
   const [manualName, setManualName] = useState("");
 
   async function searchAniList() {
