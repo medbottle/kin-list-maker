@@ -15,11 +15,11 @@ export default function CharacterSearch() {
   const [results, setResults] = useState<CharacterResult[]>([]);
   const [manualName, setManualName] = useState("");
 
-  async function searchAniList() {
+  async function searchCharactersInDb() {
     if (!query.trim()) return;
 
     try {
-      const res = await fetch("/api/search/anilist", {
+      const res = await fetch("/api/search/characters", {
         method: "POST",
         body: JSON.stringify({ query }),
       });
@@ -27,8 +27,8 @@ export default function CharacterSearch() {
       const data = await res.json();
 
       if (!res.ok) {
-        console.error("AniList search failed:", data?.error);
-        alert(data?.error ?? "AniList search failed");
+        console.error("Search failed:", data?.error);
+        alert(data?.error ?? "Search failed");
         setResults([]);
         return;
       }
@@ -39,8 +39,8 @@ export default function CharacterSearch() {
 
       setResults(characters);
     } catch (error) {
-      console.error("AniList search error:", error);
-      alert("Something went wrong while searching AniList.");
+      console.error("Search error:", error);
+      alert("Something went wrong while searching.");
       setResults([]);
     }
   }
@@ -79,16 +79,16 @@ export default function CharacterSearch() {
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search for a character..."
+        placeholder="Search for a character by name..."
         className="border p-2 w-full rounded"
       />
 
       <div className="flex gap-4">
         <button
-          onClick={searchAniList}
+          onClick={searchCharactersInDb}
           className="bg-purple-600 text-white px-3 py-2 rounded"
         >
-          Search AniList
+          Search
         </button>
 
       </div>
