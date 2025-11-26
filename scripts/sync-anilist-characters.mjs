@@ -26,7 +26,7 @@ async function fetchCharactersPage(page, perPage = 50) {
         query ($page: Int, $perPage: Int) {
           Page(page: $page, perPage: $perPage) {
             pageInfo { hasNextPage currentPage lastPage }
-            characters {
+            characters(sort: ID_DESC) {
               id
               name { full }
               image { large }
@@ -59,10 +59,32 @@ async function fetchCharactersPage(page, perPage = 50) {
   return data.data.Page;
 }
 
+async function getExistingCharacterIds() {
+  const { data, error } = await supabase
+    .from("characters")
+    .select("external_id")
+    .eq("source", "AniList")
+    .not("external_id", "is", null);
+
+  if (error) {
+    console.warn("Could not fetch existing character IDs:", error.message);
+    return new Set();
+  }
+
+  return new Set(data?.map((row) => row.external_id) || []);
+}
+
 async function run() {
-  let page = 1; // If you get rate-limited around page N, you can restart from N manually
+  console.log("Loading existing character IDs from database...");
+  const existingIds = await getExistingCharacterIds();
+  console.log(`Found ${existingIds.size} existing characters in database.`);
+  console.log("Starting sync from newest characters (page 1)...\n");
+
+  let page = 1;
   const perPage = 50;
   let lastPageLogged = false;
+  let totalNew = 0;
+  let totalSkipped = 0;
 
   while (true) {
     console.log(`Fetching page ${page}...`);
@@ -93,28 +115,47 @@ async function run() {
 
     if (!characters.length) break;
 
-    const rows = characters
+    // Check if all characters in this page already exist
+    const characterIds = characters.map((c) => String(c.id));
+    const allExist = characterIds.every((id) => existingIds.has(id));
+
+    if (allExist) {
+      console.log(`All characters on page ${page} already exist. Stopping sync.`);
+      break;
+    }
+
+    // Filter out existing characters and process only new ones
+    const newCharacters = characters.filter((c) => !existingIds.has(String(c.id)));
+
+    if (newCharacters.length === 0) {
+      console.log(`Page ${page}: All characters already exist. Stopping sync.`);
+      break;
+    }
+
+    console.log(`Page ${page}: Found ${newCharacters.length} new characters (${characters.length - newCharacters.length} already exist)`);
+
+    const rows = newCharacters
       .filter((c) => c.name?.full) // Filter out characters without names
       .map((c) => {
-      const primaryMedia = c.media?.nodes?.[0] ?? null;
-      const mediaTitle =
-        primaryMedia?.title?.english ||
-        primaryMedia?.title?.romaji ||
-        primaryMedia?.title?.native ||
-        null;
+        const primaryMedia = c.media?.nodes?.[0] ?? null;
+        const mediaTitle =
+          primaryMedia?.title?.english ||
+          primaryMedia?.title?.romaji ||
+          primaryMedia?.title?.native ||
+          null;
 
-        const name = c.name?.full || `Character ${c.id}`
+        const name = c.name?.full || `Character ${c.id}`;
 
-      return {
+        return {
           name,
-        image_url: c.image?.large ?? null,
-        source: "AniList",
-        external_id: String(c.id),
-        popularity: c.favourites ?? null,
-        media_id: primaryMedia?.id ?? null,
-        media_title: mediaTitle,
-        media_type: primaryMedia?.type ?? null,
-      };
+          image_url: c.image?.large ?? null,
+          source: "AniList",
+          external_id: String(c.id),
+          popularity: c.favourites ?? null,
+          media_id: primaryMedia?.id ?? null,
+          media_title: mediaTitle,
+          media_type: primaryMedia?.type ?? null,
+        };
       })
       .filter((row) => row.name);
 
@@ -134,16 +175,24 @@ async function run() {
       break;
     }
 
-    console.log(`Inserted/upserted ${rows.length} characters`);
+    // Add newly inserted IDs to the existing set to avoid re-checking
+    rows.forEach((row) => existingIds.add(row.external_id));
+    totalNew += rows.length;
+    totalSkipped += characters.length - newCharacters.length;
 
-    if (!pageInfo.hasNextPage) break;
+    console.log(`✓ Inserted/upserted ${rows.length} characters`);
+
+    if (!pageInfo.hasNextPage) {
+      console.log("Reached last page.");
+      break;
+    }
     page += 1;
 
     // Be nice to AniList API
     await new Promise((r) => setTimeout(r, 800)); // 0.8s delay
   }
 
-  console.log("Done");
+  console.log(`\nDone! Total new characters: ${totalNew}, Total skipped (already existed): ${totalSkipped}`);
 }
 
 run().catch((e) => {
