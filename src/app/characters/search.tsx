@@ -1,18 +1,18 @@
-"use client";
+ "use client";
 
  import Image from "next/image";
-import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
+ import { useEffect, useState } from "react";
+ import { supabase } from "../../lib/supabase";
 
-type CharacterResult = {
-  id: number | null;
-  name: string;
-  image: string | null;
-  popularity?: number | null;
-  mediaTitle?: string | null;
-};
+ type CharacterResult = {
+   id: number | null;
+   name: string;
+   image: string | null;
+   popularity?: number | null;
+   mediaTitle?: string | null;
+ };
 
-export default function CharacterSearch() {
+ export default function CharacterSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CharacterResult[]>([]);
 
@@ -150,16 +150,17 @@ export default function CharacterSearch() {
             </span>
           </div>
 
-          {/* Right: prev/next page controls */}
           <div className="flex items-center gap-3 text-sm">
             <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              onClick={() => {
+                setPage((p) => Math.max(1, p - 1));
+              }}
               disabled={page === 1 || catalogueLoading}
               className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               Previous
             </button>
-
+ 
             <button
               onClick={() => {
                 if (hasMore && !catalogueLoading) {
@@ -208,12 +209,12 @@ export default function CharacterSearch() {
                 {c.image && (
                   <div className="relative w-full h-64">
                     <Image
-                    src={c.image}
-                    alt={c.name}
+                      src={c.image}
+                      alt={c.name}
                       fill
                       sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"
                       className="object-cover rounded-md"
-                  />
+                    />
                   </div>
                 )}
                 <div className="flex-1 space-y-1">
@@ -276,11 +277,15 @@ export default function CharacterSearch() {
                   className="border border-gray-200 dark:border-gray-800 rounded p-3 flex gap-3 items-center"
                 >
                   {c.image && (
-                    <img
-                      src={c.image}
-                      alt={c.name}
-                      className="w-12 h-12 rounded object-cover"
-                    />
+                    <div className="relative w-12 h-12 flex-shrink-0">
+                      <Image
+                        src={c.image}
+                        alt={c.name}
+                        fill
+                        sizes="48px"
+                        className="rounded object-cover"
+                      />
+                    </div>
                   )}
 
                   <div className="flex-1">
@@ -305,30 +310,32 @@ export default function CharacterSearch() {
       )}
       
               <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-medium">Page {page}</h2>
+        <h2 className="text-lg font-medium">Page {page}</h2>
+        
+        <div className="flex items-center gap-3 text-sm">
+          <button
+            onClick={() => {
+              setPage((p) => Math.max(1, p - 1));
+            }}
+            disabled={page === 1 || catalogueLoading}
+            className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            Previous
+          </button>
 
-          <div className="flex items-center gap-3 text-sm">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1 || catalogueLoading}
-              className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              Previous
-            </button>
-
-            <button
-              onClick={() => {
-                if (hasMore && !catalogueLoading) {
-                  setPage((p) => p + 1);
-                }
-              }}
-              disabled={!hasMore || catalogueLoading}
-              className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              Next
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              if (hasMore && !catalogueLoading) {
+                setPage((p) => p + 1);
+              }
+            }}
+            disabled={!hasMore || catalogueLoading}
+            className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            Next
+          </button>
         </div>
+      </div>
 
     </div>
   );
