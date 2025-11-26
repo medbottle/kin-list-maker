@@ -1,0 +1,89 @@
+interface AniListCharacter {
+  id: number;
+  name: {
+    full: string;
+  };
+  image: {
+    large: string;
+  };
+}
+
+interface AniListPage {
+  Page: {
+    characters: AniListCharacter[];
+  };
+}
+
+interface AniListResponse {
+  data?: AniListPage;
+  errors?: { message: string }[];
+}
+
+interface AniListSearchBody {
+  query: string;
+}
+
+export async function POST(req: Request) {
+  const { query }: AniListSearchBody = await req.json();
+
+  if (!query || typeof query !== "string") {
+    return Response.json(
+      { error: "Missing or invalid 'query' string" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const response = await fetch("https://graphql.anilist.co", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: `
+          query ($search: String) {
+            Page(page: 1, perPage: 10) {
+              characters(search: $search) {
+                id
+                name { full }
+                image { large }
+              }
+            }
+          }
+        `,
+        variables: { search: query },
+      }),
+    });
+
+    if (!response.ok) {
+      return Response.json(
+        { error: "Failed to reach AniList" },
+        { status: 502 }
+      );
+    }
+
+    const data: AniListResponse = await response.json();
+
+    if (data.errors?.length) {
+      return Response.json(
+        { error: data.errors[0].message ?? "AniList returned an error" },
+        { status: 502 }
+      );
+    }
+
+    const characters =
+      data.data?.Page.characters.map((character) => ({
+        id: character.id,
+        name: character.name.full,
+        image: character.image.large,
+        source: "AniList" as const,
+      })) ?? [];
+
+    return Response.json({ characters });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unexpected error";
+    return Response.json(
+      { error: `AniList request failed: ${message}` },
+      { status: 500 }
+    );
+  }
+}
