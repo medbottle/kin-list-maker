@@ -200,7 +200,7 @@ export default function CharacterSearch() {
             {catalogue.map((c, index) => (
               <div
                 key={`${c.name}-${index}`}
-                className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3"
+                className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 transform transition-transform duration-200 hover:scale-105 hover:shadow-md"
               >
                 {c.image && (
                   <img
