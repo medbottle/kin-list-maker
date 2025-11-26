@@ -273,33 +273,33 @@ export default function CharacterSearch() {
           </div>
         </div>
       )}
+      
+              <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-medium">Page {page}</h2>
 
-<div className="flex justify-center">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-gray-600 dark:text-gray-400">
-              Showing:
-            </span>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(
-                  Number(e.target.value) as 20 | 40 | 60 | 80 | 100
-                );
-                setPage(1);
-              }}
-              className="border border-gray-300 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-800 text-sm"
+          <div className="flex items-center gap-3 text-sm">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1 || catalogueLoading}
+              className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
-              <option value={20}>20</option>
-              <option value={40}>40</option>
-              <option value={60}>60</option>
-              <option value={80}>80</option>
-              <option value={100}>100</option>
-            </select>
-            <span className="text-gray-600 dark:text-gray-400">
-              characters
-            </span>
+              Previous
+            </button>
+
+            <button
+              onClick={() => {
+                if (hasMore && !catalogueLoading) {
+                  setPage((p) => p + 1);
+                }
+              }}
+              disabled={!hasMore || catalogueLoading}
+              className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              Next
+            </button>
           </div>
         </div>
+
     </div>
   );
 }
