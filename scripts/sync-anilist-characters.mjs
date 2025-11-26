@@ -93,7 +93,9 @@ async function run() {
 
     if (!characters.length) break;
 
-    const rows = characters.map((c) => {
+    const rows = characters
+      .filter((c) => c.name?.full) // Filter out characters without names
+      .map((c) => {
       const primaryMedia = c.media?.nodes?.[0] ?? null;
       const mediaTitle =
         primaryMedia?.title?.english ||
@@ -101,8 +103,10 @@ async function run() {
         primaryMedia?.title?.native ||
         null;
 
+        const name = c.name?.full || `Character ${c.id}`
+
       return {
-        name: c.name.full,
+          name,
         image_url: c.image?.large ?? null,
         source: "AniList",
         external_id: String(c.id),
@@ -111,7 +115,15 @@ async function run() {
         media_title: mediaTitle,
         media_type: primaryMedia?.type ?? null,
       };
-    });
+      })
+      .filter((row) => row.name);
+
+    if (rows.length === 0) {
+      console.log(`Skipping page ${page} - no valid characters with names`);
+      if (!pageInfo.hasNextPage) break;
+      page += 1;
+      continue;
+    }
 
     const { error } = await supabase
       .from("characters")
