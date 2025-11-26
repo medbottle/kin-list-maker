@@ -153,6 +153,12 @@ export default function CharacterSearch() {
           </p>
         )}
 
+        {catalogueLoading && (
+          <div className="flex justify-center py-4">
+            <div className="h-5 w-5 rounded-full border-2 border-gray-300 border-t-purple-600 animate-spin" />
+          </div>
+        )}
+
         {!catalogueLoading && !catalogueError && catalogue.length === 0 && (
           <p className="text-sm text-gray-600 dark:text-gray-400">
             No characters found yet.
