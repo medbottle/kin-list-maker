@@ -14,7 +14,6 @@ type CharacterResult = {
 export default function CharacterSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CharacterResult[]>([]);
-  const [manualName, setManualName] = useState("");
 
   const [catalogue, setCatalogue] = useState<CharacterResult[]>([]);
   const [catalogueLoading, setCatalogueLoading] = useState(true);
@@ -25,7 +24,6 @@ export default function CharacterSearch() {
   const [hasMore, setHasMore] = useState(true);
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isManualOpen, setIsManualOpen] = useState(false);
 
   useEffect(() => {
     async function loadCatalogue() {
@@ -101,34 +99,6 @@ export default function CharacterSearch() {
     }
   }
 
-  async function addCharacter(c: CharacterResult) {
-    const { error } = await supabase.from("characters").insert({
-      name: c.name,
-      image_url: c.image,
-      external_id: c.id ?? null,
-    });
-
-    if (error) {
-      console.error(error);
-      alert("Error saving");
-    } else {
-      alert("Character added!");
-    }
-  }
-
-  async function addManual() {
-    if (!manualName.trim()) return;
-
-    await addCharacter({
-      id: null,
-      name: manualName,
-      image: null,
-    });
-
-    setManualName("");
-    setIsManualOpen(false);
-  }
-
   return (
     <div className="space-y-8 max-w-5xl mx-auto px-4">
 
@@ -145,7 +115,7 @@ export default function CharacterSearch() {
             onClick={() => setIsSearchOpen(true)}
             className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 transition-colors"
           >
-            Search Characters
+            Search 
           </button>
         </div>
       </div>
@@ -185,7 +155,7 @@ export default function CharacterSearch() {
 
         {!catalogueLoading && !catalogueError && catalogue.length === 0 && (
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            No characters found yet. Try adding some via search or manual add.
+            No characters found yet.
           </p>
         )}
 
@@ -246,7 +216,7 @@ export default function CharacterSearch() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search for a character by name..."
+                placeholder="Search for a character by name"
                 className="border border-gray-300 dark:border-gray-700 p-2 w-full rounded bg-white dark:bg-gray-800 text-sm"
               />
               <button
