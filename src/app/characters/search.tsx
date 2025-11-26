@@ -3,21 +3,49 @@
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
 
+type CharacterResult = {
+  id: number | null;
+  name: string;
+  image: string | null;
+  source: string;
+};
+
 export default function CharacterSearch() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<{ id: string | null; name: string; image: string | null; source: string; }[]>([]);
+  const [results, setResults] = useState<CharacterResult[]>([]);
   const [manualName, setManualName] = useState("");
 
   async function searchAniList() {
-    const res = await fetch("/api/search/anilist", {
-      method: "POST",
-      body: JSON.stringify({ query }),
-    });
-    const data = await res.json();
-    setResults(data.characters);
+    if (!query.trim()) return;
+
+    try {
+      const res = await fetch("/api/search/anilist", {
+        method: "POST",
+        body: JSON.stringify({ query }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error("AniList search failed:", data?.error);
+        alert(data?.error ?? "AniList search failed");
+        setResults([]);
+        return;
+      }
+
+      const characters = Array.isArray(data.characters)
+        ? data.characters
+        : [];
+
+      setResults(characters);
+    } catch (error) {
+      console.error("AniList search error:", error);
+      alert("Something went wrong while searching AniList.");
+      setResults([]);
+    }
   }
 
-  async function addCharacter(c: { id: string | null; name: string; image: string | null; source: string; }) {
+  async function addCharacter(c: CharacterResult) {
     const { error } = await supabase.from("characters").insert({
       name: c.name,
       image_url: c.image,
