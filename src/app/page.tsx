@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import { AuthStatus } from "@/components/auth-status";
-import { User as UserIcon, Users } from "lucide-react";
+import { User as UserIcon, Users, UserSearch } from "lucide-react";
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -67,6 +67,15 @@ export default function Home() {
             <Users className="h-12 w-12" />
             <span className="text-sm font-medium tracking-wide">Characters</span>
           </Link>
+          <div className="h-16 w-px bg-gray-300 dark:bg-gray-700"></div>
+          <button
+            disabled
+            className="flex flex-col items-center gap-2 p-4 text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50 transition-all duration-300"
+            title="Search Users"
+          >
+            <UserSearch className="h-12 w-12" />
+            <span className="text-sm font-medium tracking-wide">Search Users</span>
+          </button>
         </div>
       </div>
     </main>
