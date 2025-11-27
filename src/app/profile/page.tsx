@@ -74,16 +74,23 @@ export default function ProfilePage() {
   useEffect(() => {
     if (hasCheckedAuth.current) return;
     
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    async function loadUser() {
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push("/");
         return;
       }
-      setUser(session.user);
-      setProfileData(extractProfileData(session.user));
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const userToSet = currentUser || session.user;
+      if (userToSet) {
+        setUser(userToSet);
+        setProfileData(extractProfileData(userToSet));
+      }
       setLoading(false);
       hasCheckedAuth.current = true;
-    });
+    }
+    
+    loadUser();
 
     const {
       data: { subscription },
@@ -93,13 +100,29 @@ export default function ProfilePage() {
         return;
       }
       if (event === "USER_UPDATED" && session) {
-        setUser(session.user);
-        setProfileData(extractProfileData(session.user));
+        supabase.auth.getUser().then(({ data: { user: updatedUser } }) => {
+          if (updatedUser) {
+            setUser(updatedUser);
+            setProfileData(extractProfileData(updatedUser));
+          } else if (session.user) {
+            setUser(session.user);
+            setProfileData(extractProfileData(session.user));
+          }
+        });
       } else if (session && !hasCheckedAuth.current) {
-        setUser(session.user);
-        setProfileData(extractProfileData(session.user));
-        setLoading(false);
-        hasCheckedAuth.current = true;
+        async function loadUserForSession() {
+          const { data: { user: sessionUser } } = await supabase.auth.getUser();
+          if (sessionUser) {
+            setUser(sessionUser);
+            setProfileData(extractProfileData(sessionUser));
+          } else if (session?.user) {
+            setUser(session.user);
+            setProfileData(extractProfileData(session.user));
+          }
+          setLoading(false);
+          hasCheckedAuth.current = true;
+        }
+        loadUserForSession();
       }
     });
 
@@ -446,6 +469,18 @@ export default function ProfilePage() {
                     <span className="font-semibold">Gender:</span>{" "}
                     {profileData.gender.charAt(0).toUpperCase() +
                       profileData.gender.slice(1).replace(/-/g, " ")}
+                  </p>
+                )}
+                {user && (
+                  <p className="text-sm text-gray-500 dark:text-gray-500">
+                    <span className="font-semibold">Joined:</span>{" "}
+                    {user.created_at
+                      ? new Date(user.created_at).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                      : "Loading..."}
                   </p>
                 )}
               </div>
