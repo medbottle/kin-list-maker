@@ -71,10 +71,10 @@ export default function Home() {
           <button
             disabled
             className="flex flex-col items-center gap-2 p-4 text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50 transition-all duration-300"
-            title="Search Users"
+            title="Search users"
           >
             <UserSearch className="h-12 w-12" />
-            <span className="text-sm font-medium tracking-wide">Search Users</span>
+            <span className="text-sm font-medium tracking-wide">Search users</span>
           </button>
         </div>
       </div>
