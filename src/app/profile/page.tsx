@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import { ProfileEditModal } from "@/components/profile-edit-modal";
-import { generateUserNumber } from "@/lib/user-number";
+import { extractProfileData, type ProfileData } from "@/lib/profile-utils";
 
 type FavoriteCharacter = {
   id: string;
@@ -35,11 +35,11 @@ export default function ProfilePage() {
   const [favoritesLoading, setFavoritesLoading] = useState(true);
   const [listsLoading, setListsLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [profileData, setProfileData] = useState({
-    displayName: null as string | null,
-    gender: null as string | null,
-    profilePicture: null as string | null,
-    userNumber: null as string | null,
+  const [profileData, setProfileData] = useState<ProfileData>({
+    displayName: null,
+    gender: null,
+    profilePicture: null,
+    userNumber: null,
   });
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -54,23 +54,7 @@ export default function ProfilePage() {
         return;
       }
       setUser(session.user);
-      if (session.user.user_metadata) {
-        const userNumber = session.user.user_metadata.user_number || generateUserNumber(session.user.id);
-        setProfileData({
-          displayName: session.user.user_metadata.display_name || null,
-          gender: session.user.user_metadata.gender || null,
-          profilePicture: session.user.user_metadata.profile_picture || null,
-          userNumber: userNumber,
-        });
-      } else {
-        const userNumber = generateUserNumber(session.user.id);
-        setProfileData({
-          displayName: null,
-          gender: null,
-          profilePicture: null,
-          userNumber: userNumber,
-        });
-      }
+      setProfileData(extractProfileData(session.user));
       setLoading(false);
       hasCheckedAuth.current = true;
     });
@@ -84,26 +68,10 @@ export default function ProfilePage() {
       }
       if (event === "USER_UPDATED" && session) {
         setUser(session.user);
-        if (session.user.user_metadata) {
-          const userNumber = session.user.user_metadata.user_number || generateUserNumber(session.user.id);
-          setProfileData({
-            displayName: session.user.user_metadata.display_name || null,
-            gender: session.user.user_metadata.gender || null,
-            profilePicture: session.user.user_metadata.profile_picture || null,
-            userNumber: userNumber,
-          });
-        }
+        setProfileData(extractProfileData(session.user));
       } else if (session && !hasCheckedAuth.current) {
         setUser(session.user);
-        if (session.user.user_metadata) {
-          const userNumber = session.user.user_metadata.user_number || generateUserNumber(session.user.id);
-          setProfileData({
-            displayName: session.user.user_metadata.display_name || null,
-            gender: session.user.user_metadata.gender || null,
-            profilePicture: session.user.user_metadata.profile_picture || null,
-            userNumber: userNumber,
-          });
-        }
+        setProfileData(extractProfileData(session.user));
         setLoading(false);
         hasCheckedAuth.current = true;
       }
@@ -368,14 +336,7 @@ export default function ProfilePage() {
           } = await supabase.auth.getSession();
           if (session?.user) {
             setUser(session.user);
-            const metadata = session.user.user_metadata || {};
-            const userNumber = metadata.user_number || generateUserNumber(session.user.id);
-            setProfileData({
-              displayName: metadata.display_name || null,
-              gender: metadata.gender || null,
-              profilePicture: metadata.profile_picture || null,
-              userNumber: userNumber,
-            });
+            setProfileData(extractProfileData(session.user));
           }
         }}
       />
