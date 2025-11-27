@@ -36,7 +36,7 @@ export function Header() {
           </Link>
           <div className="flex items-center gap-3">
             {user && profilePicture && (
-              <div className="relative w-10 h-10 rounded-full overflow-hidden transition-transform duration-300 hover:scale-110 cursor-pointer">
+              <Link href="/profile" className="relative w-10 h-10 rounded-full overflow-hidden transition-transform duration-300 hover:scale-110 cursor-pointer">
                 <Image
                   src={profilePicture}
                   alt="Profile picture"
@@ -47,12 +47,12 @@ export function Header() {
                     e.currentTarget.style.display = "none";
                   }}
                 />
-              </div>
+              </Link>
             )}
             {user && !profilePicture && (
-              <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+              <Link href="/profile" className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center transition-transform duration-300 hover:scale-110 cursor-pointer">
                 <span className="text-gray-400 text-lg">👤</span>
-              </div>
+              </Link>
             )}
             <AuthStatus />
           </div>
