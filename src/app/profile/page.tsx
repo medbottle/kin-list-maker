@@ -430,7 +430,9 @@ export default function ProfilePage() {
     <main className="min-h-screen p-8 bg-white dark:bg-black">
       <div className="max-w-6xl mx-auto space-y-8">
         <Link href="/" className="inline-block">
-          <ArrowLeft className="h-10 w-10 transition-transform duration-200 hover:scale-110" />
+          <button className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
         </Link>
 
         <div className="space-y-6">
@@ -487,7 +489,7 @@ export default function ProfilePage() {
             </div>
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 transition-colors"
+              className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               title="Edit Profile"
             >
               <Edit2 className="h-5 w-5" />
@@ -508,7 +510,7 @@ export default function ProfilePage() {
                 )}
                 <Link
                   href="/characters"
-                  className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   title="Go to character catalogue"
                 >
                   <UserPlus className="h-5 w-5" />
@@ -583,7 +585,7 @@ export default function ProfilePage() {
                 <button
                   onClick={() => setIsCreateListModalOpen(true)}
                   disabled={lists.length >= 3}
-                  className="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   title={
                     lists.length >= 3
                       ? "You can only have 3 lists. Delete one first."
