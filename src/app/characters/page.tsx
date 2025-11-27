@@ -1,6 +1,9 @@
 import CharacterSearch from "../characters/search";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { metadataByPath } from "@/lib/metadata";
+
+export const metadata = metadataByPath["/characters"];
 
 export default function CharactersPage() {
   return (
