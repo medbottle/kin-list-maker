@@ -71,6 +71,8 @@ export default function ListPage() {
 
     async function loadList() {
       setLoading(true);
+      if (!user) return;
+      
       const { data: listData, error: listError } = await supabase
         .from("user_lists")
         .select("*")
@@ -353,7 +355,7 @@ export default function ListPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
           {items.length === 0 ? (
             <div className="col-span-full flex items-center justify-center h-64 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
               <p className="text-sm text-gray-500 dark:text-gray-500 italic">
@@ -364,7 +366,7 @@ export default function ListPage() {
             items.map((item) => (
               <div
                 key={item.id}
-                className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 relative group"
+                className="rounded-lg p-4 flex flex-col gap-3 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 relative group"
               >
                 <button
                   onClick={() => removeCharacter(item.id)}
@@ -374,7 +376,7 @@ export default function ListPage() {
                   <X className="h-3 w-3" />
                 </button>
                 {item.character_image ? (
-                  <div className="relative w-full h-64 rounded-md overflow-hidden">
+                  <div className="relative w-full h-56 rounded-md overflow-hidden">
                     <Image
                       src={item.character_image}
                       alt={item.character_name}
@@ -384,11 +386,11 @@ export default function ListPage() {
                     />
                   </div>
                 ) : (
-                  <div className="w-full h-64 rounded-md bg-gray-200 dark:bg-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-700">
+                  <div className="w-full h-56 rounded-md bg-gray-200 dark:bg-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-700">
                     <span className="text-xs text-gray-400">?</span>
                   </div>
                 )}
-                <div className="flex-1 space-y-1">
+                <div className="flex-1 space-y-1 text-center">
                   <div className="font-semibold">{item.character_name}</div>
                   {item.character_media_title && (
                     <div className="text-xs text-gray-600 dark:text-gray-400">
