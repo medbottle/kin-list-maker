@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { metadataByPath } from "@/lib/metadata";
+import { Header } from "@/components/header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,7 +13,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = metadataByPath["/"];
+export const metadata: Metadata = {
+  title: "Kin List Maker",
+  description: "An easy and simple way of showcasing your kin list",
+};
 
 export default function RootLayout({
   children,
@@ -25,6 +28,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Header />
+        <div className="h-16" />
         {children}
       </body>
     </html>
