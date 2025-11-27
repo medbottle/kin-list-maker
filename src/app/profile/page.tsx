@@ -493,7 +493,7 @@ export default function ProfilePage() {
                 {favorites.map((fav) => (
                   <div
                     key={fav.id}
-                    className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 hover:shadow-md transition-shadow relative w-full"
+                    className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 relative w-full"
                   >
                     <button
                       onClick={() => removeFavorite(fav.id)}
@@ -503,17 +503,17 @@ export default function ProfilePage() {
                       <X className="h-3 w-3" />
                     </button>
                     {fav.character_image && (
-                      <div className="relative w-full h-48">
+                      <div className="relative w-full h-48 rounded-md overflow-hidden">
                         <Image
                           src={fav.character_image}
                           alt={fav.character_name}
                           fill
                           sizes="(min-width: 1024px) 20vw, 25vw"
-                          className="object-cover rounded-md"
+                          className="object-cover transition-transform duration-300 hover:scale-110"
                         />
                       </div>
                     )}
-                    <div className="space-y-1">
+                    <div className="space-y-1 text-center">
                       <div className="font-semibold text-sm">
                         {fav.character_name}
                       </div>
@@ -578,7 +578,7 @@ export default function ProfilePage() {
                   return (
                     <div
                       key={list.id}
-                      className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 flex flex-col gap-4 hover:shadow-lg transition-shadow bg-white dark:bg-gray-900"
+                      className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 flex flex-col gap-4 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 bg-white dark:bg-gray-900"
                     >
                       <div className="flex items-center justify-between">
                         <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -600,7 +600,7 @@ export default function ProfilePage() {
                           {items.slice(0, 4).map((item) => (
                             <div
                               key={item.id}
-                              className="rounded-lg overflow-hidden hover:shadow-md transition-shadow aspect-square"
+                              className="rounded-lg overflow-hidden hover:shadow-lg hover:scale-110 transition-all duration-300 cursor-pointer aspect-square"
                             >
                               {item.character_image ? (
                                 <div className="relative w-full h-full">
@@ -609,7 +609,7 @@ export default function ProfilePage() {
                                     alt={item.character_name}
                                     fill
                                     sizes="(min-width: 1024px) 50vw, 50vw"
-                                    className="object-cover"
+                                    className="object-cover transition-transform duration-300 hover:scale-110"
                                   />
                                 </div>
                               ) : (
