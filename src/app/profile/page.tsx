@@ -541,18 +541,16 @@ export default function ProfilePage() {
                       profileData.gender.slice(1).replace(/-/g, " ")}
                   </p>
                 )}
-                {user && (
-                  <p className="text-sm text-gray-500 dark:text-gray-500">
-                    <span className="font-semibold">Joined:</span>{" "}
-                    {user.created_at
-                      ? new Date(user.created_at).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })
-                      : "Loading..."}
-                  </p>
-                )}
+                <p className="text-sm text-gray-500 dark:text-gray-500">
+                  <span className="font-semibold">Joined:</span>{" "}
+                  {user.created_at
+                    ? new Date(user.created_at).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
+                    : "Loading..."}
+                </p>
               </div>
             </div>
             <button
