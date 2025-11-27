@@ -427,7 +427,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen p-8 bg-white dark:bg-black">
+    <main className="min-h-screen p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         <Link href="/" className="inline-block">
           <button className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
