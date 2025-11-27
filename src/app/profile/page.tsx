@@ -195,7 +195,7 @@ export default function ProfilePage() {
       hasCheckedAuth.current = true;
     }
     
-    loadUser();
+    loadUserSession();
 
     const {
       data: { subscription },
