@@ -10,6 +10,7 @@
     "sync:anilist": "node scripts/sync-anilist-characters.mjs"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.84.0",
     "dotenv": "^16.4.5",
     "lucide-react": "^0.555.0",
