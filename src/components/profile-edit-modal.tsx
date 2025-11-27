@@ -168,6 +168,7 @@ export function ProfileEditModal({
             onClick={handleClose}
             className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             title="Close"
+            aria-label="Close"
           >
             <X className="h-5 w-5" />
           </button>
@@ -204,6 +205,7 @@ export function ProfileEditModal({
                 htmlFor="profile-picture-input"
                 className="cursor-pointer p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center justify-center"
                 title={profilePicture ? "Change Picture" : "Upload Picture"}
+                aria-label={profilePicture ? "Change Picture" : "Upload Picture"}
               >
                 <Upload className="h-5 w-5" />
               </label>
@@ -213,6 +215,7 @@ export function ProfileEditModal({
                   onClick={handleRemovePicture}
                   className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center justify-center ml-1"
                   title="Remove Picture"
+                  aria-label="Remove Picture"
                 >
                   <Trash2 className="h-5 w-5 text-red-600 dark:text-red-500" />
                 </button>

@@ -6,9 +6,9 @@ export async function GET(req: NextRequest) {
     const realIp = req.headers.get("x-real-ip");
     const ip = forwarded?.split(",")[0]?.trim() || realIp || null;
 
-    let apiUrl = "http://ip-api.com/json/?fields=status,message,country,countryCode";
+    let apiUrl = "https://ip-api.com/json/?fields=status,message,country,countryCode";
     if (ip && ip !== "unknown" && !ip.startsWith("127.") && !ip.startsWith("::1") && ip !== "localhost") {
-      apiUrl = `http://ip-api.com/json/${ip}?fields=status,message,country,countryCode`;
+      apiUrl = `https://ip-api.com/json/${ip}?fields=status,message,country,countryCode`;
     }
 
     const response = await fetch(apiUrl);

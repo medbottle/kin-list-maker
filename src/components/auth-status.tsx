@@ -50,6 +50,7 @@ export function AuthStatus() {
             onClick={handleLogout}
             className="bg-red-600 text-white p-2 rounded-md transition-colors hover:bg-red-700 hover:scale-110"
             title="Logout"
+            aria-label="Logout"
           >
             <LogOut className="h-4 w-4" />
           </button>
