@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import { AuthModal } from "./auth-modal";
@@ -9,7 +9,9 @@ export function AuthStatus() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const supabase = createClient();
+  // Memoize the Supabase client to ensure the same instance is used across renders
+  // This prevents the useEffect from running repeatedly due to supabase.auth being a new object
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     // Check current session
