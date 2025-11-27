@@ -229,7 +229,7 @@ async function run() {
 
     console.log(`✓ Inserted/upserted ${rows.length} characters:`);
     rows.forEach((row) => {
-      const mediaInfo = row.source_name ? ` (${row.source_name})` : "";
+      const mediaInfo = row.media ? ` (${row.media})` : "";
       console.log(`  - ${row.name}${mediaInfo}`);
     });
 
