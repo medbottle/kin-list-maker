@@ -115,7 +115,7 @@ export default function ProfilePage() {
               if (updateError) {
                 console.error("Error updating user location/countryCode:", updateError);
               } else {
-                console.log("Successfully saved - location:", updatedMetadata.location, "country_code:", updatedMetadata.country_code);
+                
               }
               
               await supabase.auth.refreshSession();
