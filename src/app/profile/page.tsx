@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, X, Edit2, Plus, UserPlus, Star, List } from "lucide-react";
+import { ArrowLeft, X, Edit2, Plus, UserPlus, Star, List, Trash2, Users } from "lucide-react";
 import Image from "next/image";
 import { ProfileEditModal } from "@/components/profile-edit-modal";
 import { CreateListModal } from "@/components/create-list-modal";
@@ -674,27 +674,29 @@ export default function ProfilePage() {
                           Created: {new Date(list.created_at).toLocaleDateString()}
                         </span>
                         <div className="flex gap-2 flex-shrink-0">
-                          <Link
-                            href="/characters"
-                            className={`text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap ${
-                              list.character_count >= 10
-                                ? "opacity-50 cursor-not-allowed"
-                                : ""
-                            }`}
-                            title={
-                              list.character_count >= 10
-                                ? "List is full (10/10)"
-                                : "Go to characters page to add characters"
-                            }
-                          >
-                            Add Characters
-                          </Link>
+                          {list.character_count >= 10 ? (
+                            <button
+                              disabled
+                              className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                              title="List is full (10/10)"
+                            >
+                              <Plus className="h-5 w-5" />
+                            </button>
+                          ) : (
+                            <Link
+                              href="/characters"
+                              className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                              title="Go to characters page to add characters"
+                            >
+                              <Plus className="h-5 w-5" />
+                            </Link>
+                          )}
                           <button
                             onClick={() => handleDeleteClick(list.id, list.name)}
-                            className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 transition-colors whitespace-nowrap"
+                            className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                             title="Delete list"
                           >
-                            Delete List
+                            <Trash2 className="h-5 w-5 text-red-600 dark:text-red-500" />
                           </button>
                         </div>
                     </div>
