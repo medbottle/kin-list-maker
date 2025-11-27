@@ -130,7 +130,6 @@ export default function ProfilePage() {
                 setProfileData(extractProfileData(userToSet));
               }
             } else {
-              console.log("No country data from geolocation API - country:", geoData.country, "countryCode:", geoData.countryCode);
               setUser(userToSet);
               setProfileData(extractProfileData(userToSet));
             }
