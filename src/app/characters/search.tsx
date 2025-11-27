@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
-import { Heart } from "lucide-react";
+import { Heart, Search } from "lucide-react";
 import { AddToListModal } from "@/components/add-to-list-modal";
 import PaginationControls from "./components/pagination";
 
@@ -220,9 +220,9 @@ export default function CharacterSearch() {
         <div className="flex gap-3">
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 transition-colors"
-          >
-            Search
+            className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+            <Search className="h-4 w-4" />
           </button>
         </div>
       </div>
