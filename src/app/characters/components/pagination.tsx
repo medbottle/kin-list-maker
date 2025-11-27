@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export type PaginationControlsProps = {
   page: number;
@@ -23,16 +24,18 @@ export default function PaginationControls({
         <button
           onClick={onPrevious}
           disabled={page === 1 || isLoading}
-          className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          title="Previous page"
         >
-          Previous
+          <ChevronLeft className="h-5 w-5" />
         </button>
         <button
           onClick={onNext}
           disabled={!hasMore || isLoading}
-          className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          title="Next page"
         >
-          Next
+          <ChevronRight className="h-5 w-5" />
         </button>
       </div>
     </div>
