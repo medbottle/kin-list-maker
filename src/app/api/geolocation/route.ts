@@ -14,18 +14,21 @@ export async function GET(req: NextRequest) {
     const response = await fetch(apiUrl);
     const data = await response.json();
 
-    if (data.status === "success" && data.country) {
+    console.log("IP Geolocation API response:", { ip, data });
+
+    if (data.status === "success" && data.country && data.countryCode) {
       return NextResponse.json({ 
         country: data.country,
         countryCode: data.countryCode 
       });
     }
 
+    console.log("Geolocation failed - status:", data.status, "country:", data.country, "countryCode:", data.countryCode);
     return NextResponse.json({ 
       country: null,
       countryCode: null 
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ 
       country: null,
       countryCode: null 
