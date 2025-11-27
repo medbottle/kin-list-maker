@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
-import { Heart, Search, ListPlus, X } from "lucide-react";
+import { Heart, Search, ListPlus, X, ChevronDown } from "lucide-react";
 import { AddToListModal } from "@/components/add-to-list-modal";
 import PaginationControls from "./components/pagination";
 import { loadCharacterListCounts } from "@/lib/list-counts";
@@ -19,6 +19,13 @@ type CharacterResult = {
 export default function CharacterSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CharacterResult[]>([]);
+  const [selectedMedia, setSelectedMedia] = useState<string>("all");
+  const [catalogueMediaFilter, setCatalogueMediaFilter] = useState<string>("all");
+  const [availableMedia, setAvailableMedia] = useState<string[]>([]);
+  const [isMediaLoading, setIsMediaLoading] = useState(true);
+  const [mediaSearchQuery, setMediaSearchQuery] = useState<string>("");
+  const [isMediaDropdownOpen, setIsMediaDropdownOpen] = useState(false);
+  const mediaDropdownRef = useRef<HTMLDivElement>(null);
 
   const [catalogue, setCatalogue] = useState<CharacterResult[]>([]);
   const [catalogueLoading, setCatalogueLoading] = useState(true);
@@ -27,6 +34,7 @@ export default function CharacterSearch() {
   const [pageSize, setPageSize] = useState<20 | 40 | 60 | 80 | 100>(40);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [pageInput, setPageInput] = useState<string>("");
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
@@ -98,15 +106,73 @@ export default function CharacterSearch() {
   }, [page]);
 
   useEffect(() => {
+    setPageInput("");
+  }, [page]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        mediaDropdownRef.current &&
+        !mediaDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsMediaDropdownOpen(false);
+      }
+    }
+
+    if (isMediaDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isMediaDropdownOpen]);
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    async function loadAvailableMedia() {
+      setIsMediaLoading(true);
+      try {
+        const res = await fetch("/api/media/list");
+        if (!res.ok) {
+          console.error("Error loading media:", res.statusText);
+          if (isMounted) {
+            setIsMediaLoading(false);
+          }
+          return;
+        }
+        const data = await res.json();
+        if (isMounted && data.media && Array.isArray(data.media)) {
+          setAvailableMedia(data.media);
+          setIsMediaLoading(false);
+        }
+      } catch (error) {
+        console.error("Error fetching media:", error);
+        if (isMounted) {
+          setIsMediaLoading(false);
+        }
+      }
+    }
+
+    void loadAvailableMedia();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     async function loadCatalogue() {
       setCatalogueLoading(true);
       setCatalogueError(null);
       try {
-        const { data, error } = await supabase
-          .from("characters")
-          .select("id, name, image, media, source_api")
-          .order("name")
-          .range((page - 1) * pageSize, page * pageSize - 1);
+        const mediaFilter = catalogueMediaFilter && catalogueMediaFilter !== "all" 
+          ? catalogueMediaFilter 
+          : null;
+
+        const { data, error } = await supabase.rpc("get_characters_sorted", {
+          p_media_filter: mediaFilter,
+          p_limit: pageSize,
+          p_offset: (page - 1) * pageSize,
+        });
 
         if (error) {
           console.error("Error loading catalogue:", error);
@@ -139,7 +205,7 @@ export default function CharacterSearch() {
     }
 
     void loadCatalogue();
-  }, [pageSize, page, supabase]);
+  }, [pageSize, page, catalogueMediaFilter, supabase]);
 
   async function searchCharactersInDb() {
     if (!query.trim()) return;
@@ -147,7 +213,7 @@ export default function CharacterSearch() {
     try {
       const res = await fetch("/api/search/characters", {
         method: "POST",
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, media: selectedMedia }),
       });
 
       const data = await res.json();
@@ -248,42 +314,181 @@ export default function CharacterSearch() {
       </div>
 
       <section className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-medium">Page {page}</h2>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 dark:text-gray-400">
+                Media:
+              </label>
+              <div className="relative min-w-[200px]" ref={mediaDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsMediaDropdownOpen(!isMediaDropdownOpen)}
+                  disabled={isMediaLoading}
+                  className="w-full flex items-center justify-between border border-gray-300 dark:border-gray-700 rounded px-3 py-1.5 bg-white dark:bg-gray-800 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="truncate">
+                    {isMediaLoading ? "Loading media..." : (catalogueMediaFilter === "all" ? "All Media" : catalogueMediaFilter)}
+                  </span>
+                  {isMediaLoading ? (
+                    <div className="h-4 w-4 border-2 border-gray-300 border-t-gray-600 dark:border-gray-600 dark:border-t-gray-400 rounded-full animate-spin" />
+                  ) : (
+                    <ChevronDown className={`h-4 w-4 flex-shrink-0 transition-transform ${isMediaDropdownOpen ? "rotate-180" : ""}`} />
+                  )}
+                </button>
+                {isMediaDropdownOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow-lg max-h-60 overflow-hidden flex flex-col">
+                    <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+                      <input
+                        type="text"
+                        value={mediaSearchQuery}
+                        onChange={(e) => setMediaSearchQuery(e.target.value)}
+                        placeholder="Search media..."
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-500"
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="overflow-y-auto max-h-48">
+                      {isMediaLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="h-6 w-6 border-2 border-gray-300 border-t-gray-600 dark:border-gray-600 dark:border-t-gray-400 rounded-full animate-spin" />
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Loading media...</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCatalogueMediaFilter("all");
+                              setMediaSearchQuery("");
+                              setIsMediaDropdownOpen(false);
+                              setPage(1);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                              catalogueMediaFilter === "all"
+                                ? "bg-gray-200 dark:bg-gray-700 font-medium"
+                                : ""
+                            }`}
+                          >
+                            All Media
+                          </button>
+                          {availableMedia
+                            .filter((media) =>
+                              media.toLowerCase().includes(mediaSearchQuery.toLowerCase())
+                            )
+                            .map((media) => (
+                              <button
+                                key={media}
+                                type="button"
+                                onClick={() => {
+                                  setCatalogueMediaFilter(media);
+                                  setMediaSearchQuery("");
+                                  setIsMediaDropdownOpen(false);
+                                  setPage(1);
+                                }}
+                                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors truncate ${
+                                  catalogueMediaFilter === media
+                                    ? "bg-gray-200 dark:bg-gray-700 font-medium"
+                                    : ""
+                                }`}
+                              >
+                                {media}
+                              </button>
+                            ))}
+                          {availableMedia.filter((media) =>
+                            media.toLowerCase().includes(mediaSearchQuery.toLowerCase())
+                          ).length === 0 && mediaSearchQuery && (
+                            <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+                              No media found matching &quot;{mediaSearchQuery}&quot;
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-gray-600 dark:text-gray-400">
-              Showing:
-            </span>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(
-                  Number(e.target.value) as 20 | 40 | 60 | 80 | 100
-                );
-                setPage(1);
-              }}
-              className="border border-gray-300 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-800 text-sm"
-            >
-              <option value={20}>20</option>
-              <option value={40}>40</option>
-              <option value={60}>60</option>
-              <option value={80}>80</option>
-              <option value={100}>100</option>
-            </select>
-            <span className="text-gray-600 dark:text-gray-400">
-              characters
-            </span>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-gray-600 dark:text-gray-400">
+                Showing:
+              </span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(
+                    Number(e.target.value) as 20 | 40 | 60 | 80 | 100
+                  );
+                  setPage(1);
+                }}
+                className="border border-gray-300 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-800 text-sm"
+              >
+                <option value={20}>20</option>
+                <option value={40}>40</option>
+                <option value={60}>60</option>
+                <option value={80}>80</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="text-gray-600 dark:text-gray-400">
+                characters
+              </span>
+            </div>
           </div>
 
-          <PaginationControls
-            page={page}
-            hasMore={hasMore}
-            isLoading={catalogueLoading}
-            onPrevious={() => setPage((p) => Math.max(1, p - 1))}
-            onNext={() => setPage((p) => p + 1)}
-            showPageInfo={false}
-          />
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-medium">Page {page}</h2>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <label className="text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                  Go to page:
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={pageInput}
+                  onChange={(e) => setPageInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const pageNum = parseInt(pageInput, 10);
+                      if (pageNum >= 1) {
+                        setPage(pageNum);
+                        setPageInput("");
+                      }
+                    }
+                  }}
+                  placeholder={String(page)}
+                  className="w-20 border border-gray-300 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-800 text-sm"
+                />
+                <button
+                  onClick={() => {
+                    const pageNum = parseInt(pageInput, 10);
+                    if (pageNum >= 1) {
+                      setPage(pageNum);
+                      setPageInput("");
+                    }
+                  }}
+                  disabled={!pageInput || parseInt(pageInput, 10) < 1}
+                  className="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Go
+                </button>
+              </div>
+
+              <PaginationControls
+                page={page}
+                hasMore={hasMore}
+                isLoading={catalogueLoading}
+                onPrevious={() => setPage((p) => Math.max(1, p - 1))}
+                onNext={() => setPage((p) => p + 1)}
+                showPageInfo={false}
+              />
+            </div>
+          </div>
         </div>
         
         {catalogueError && (
@@ -333,14 +538,14 @@ export default function CharacterSearch() {
                       />
                     </div>
                   )}
-                    <div className="flex-1 space-y-1">
-                      <div className="font-semibold">{c.name}</div>
-                      {c.mediaTitle && (
-                        <div className="text-xs text-gray-600 dark:text-gray-400">
-                          {c.mediaTitle}
-                        </div>
-                      )}
-                    </div>
+                     <div className="flex-1 space-y-1">
+                       <div className="font-semibold">{c.name.replace(/["']/g, "")}</div>
+                       {c.mediaTitle && (
+                         <div className="text-xs text-gray-600 dark:text-gray-400">
+                           {c.mediaTitle}
+                         </div>
+                       )}
+                     </div>
                     {user && (
                       <div className="flex items-center gap-2">
                         <button

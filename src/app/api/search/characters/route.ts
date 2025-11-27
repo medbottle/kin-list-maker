@@ -7,10 +7,11 @@ const supabase = createClient(
 
 interface SearchBody {
   query: string;
+  media?: string;
 }
 
 export async function POST(req: Request) {
-  const { query }: SearchBody = await req.json();
+  const { query, media }: SearchBody = await req.json();
 
   if (!query || typeof query !== "string") {
     return Response.json(
@@ -22,10 +23,16 @@ export async function POST(req: Request) {
   const trimmed = query.trim();
 
   try {
-    const { data, error } = await supabase
+    let queryBuilder = supabase
       .from("characters")
       .select("id, name, image, media, source_api")
-      .ilike("name", `%${trimmed}%`)
+      .ilike("name", `%${trimmed}%`);
+
+    if (media && media !== "all") {
+      queryBuilder = queryBuilder.eq("media", media);
+    }
+
+    const { data, error } = await queryBuilder
       .order("name")
       .limit(25);
 
