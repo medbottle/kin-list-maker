@@ -103,12 +103,8 @@ export function ProfileEditModal({
         profilePictureUrl = publicUrl;
       }
 
-      const {
-        data: { user: currentUser },
-      } = await supabase.auth.getUser();
-
       const updatedMetadata = {
-        ...(currentUser?.user_metadata || {}),
+        ...(user?.user_metadata || {}),
         display_name: displayName || null,
         gender: gender || null,
         profile_picture: profilePictureUrl || null,
