@@ -327,7 +327,7 @@ export default function CharacterSearch() {
                   type="button"
                   onClick={() => setIsMediaDropdownOpen(!isMediaDropdownOpen)}
                   disabled={isMediaLoading}
-                  className="w-full flex items-center justify-between border border-gray-300 dark:border-gray-700 rounded px-3 py-1.5 bg-white dark:bg-gray-800 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                  className="w-full flex items-center justify-between border border-gray-300 dark:border-gray-700 rounded px-3 py-1.5 bg-white dark:bg-gray-800 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="truncate">
                     {isMediaLoading ? "Loading media..." : (catalogueMediaFilter === "all" ? "All Media" : catalogueMediaFilter)}
