@@ -93,7 +93,6 @@ export default function ProfilePage() {
           try {
             const geoResponse = await fetch("/api/geolocation");
             const geoData = await geoResponse.json();
-            console.log("Geolocation data:", geoData);
             
             if (geoData.country && geoData.countryCode) {
               const updatedMetadata = {
