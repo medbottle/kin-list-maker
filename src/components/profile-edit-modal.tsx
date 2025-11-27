@@ -74,6 +74,7 @@ export function ProfileEditModal({
           await supabase.storage.from("avatars").remove([filePath]);
         } catch (error) {
           console.error("Error deleting old picture:", error);
+          alert("Failed to delete old profile picture. Please try again later.");
         }
         profilePictureUrl = null;
       }
@@ -83,7 +84,7 @@ export function ProfileEditModal({
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
         const filePath = `profile-pictures/${fileName}`;
 
-        const { error: uploadError, data: uploadData } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from("avatars")
           .upload(filePath, profilePicture, {
             cacheControl: "3600",
@@ -101,15 +102,10 @@ export function ProfileEditModal({
           data: { publicUrl },
         } = supabase.storage.from("avatars").getPublicUrl(filePath);
         profilePictureUrl = publicUrl;
-        console.log("Profile picture uploaded:", publicUrl);
       }
 
-      const {
-        data: { user: currentUser },
-      } = await supabase.auth.getUser();
-
       const updatedMetadata = {
-        ...(currentUser?.user_metadata || {}),
+        ...(user?.user_metadata || {}),
         display_name: displayName || null,
         gender: gender || null,
         profile_picture: profilePictureUrl || null,
@@ -126,7 +122,6 @@ export function ProfileEditModal({
         return;
       }
 
-      console.log("Profile updated, metadata:", updatedMetadata);
       await supabase.auth.refreshSession();
       
       const {
@@ -134,7 +129,6 @@ export function ProfileEditModal({
       } = await supabase.auth.getSession();
       
       if (session?.user) {
-        console.log("Updated user metadata:", session.user.user_metadata);
       }
       
       onUpdate();
