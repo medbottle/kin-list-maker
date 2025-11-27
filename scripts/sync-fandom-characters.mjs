@@ -49,33 +49,7 @@ async function fetchPageInfo(pageIds) {
     action: "query",
     format: "json",
     pageids: pageIds.join("|"),
-    prop: "info|images|pageimages",
-    piprop: "thumbnail",
-    pithumbsize: "500",
-    inprop: "url",
-  });
-
-  const response = await fetch(`${FANDOM_API_URL}?${params.toString()}`);
-  
-  if (response.status === 429) {
-    throw new Error("RATE_LIMIT");
-  }
-
-  if (!response.ok) {
-    throw new Error(`Fandom API error: ${response.statusText}`);
-  }
-
-  return await response.json();
-}
-
-async function fetchPageContent(pageTitle) {
-  const params = new URLSearchParams({
-    action: "query",
-    format: "json",
-    titles: pageTitle,
-    prop: "extracts|pageimages",
-    exintro: "true",
-    explaintext: "true",
+    prop: "pageimages",
     piprop: "thumbnail",
     pithumbsize: "500",
   });
@@ -90,7 +64,13 @@ async function fetchPageContent(pageTitle) {
     throw new Error(`Fandom API error: ${response.statusText}`);
   }
 
-  return await response.json();
+  const data = await response.json();
+  
+  if (data.error) {
+    throw new Error(`Fandom API error: ${data.error.info || JSON.stringify(data.error)}`);
+  }
+
+  return data;
 }
 
 async function getExistingExternalIds() {
@@ -180,34 +160,49 @@ async function run() {
 
     console.log(`Found ${members.length} pages in category`);
 
-    const pageIds = members.map((m) => m.pageid);
-    const pageInfo = await fetchPageInfo(pageIds);
-
     const rows = [];
+    const pageIdBatches = [];
+    
+    for (let i = 0; i < members.length; i += 50) {
+      pageIdBatches.push(members.slice(i, i + 50));
+    }
 
-    for (const member of members) {
-      const idKey = `fandom_${member.pageid}`;
-      
-      if (existingIds.has(idKey)) {
-        totalSkipped++;
+    for (const batch of pageIdBatches) {
+      const pageIds = batch.map((m) => String(m.pageid));
+      let pageInfo;
+      try {
+        pageInfo = await fetchPageInfo(pageIds);
+      } catch (error) {
+        console.error(`Error fetching page info:`, error.message);
         continue;
       }
 
-      const pageData = pageInfo.query?.pages?.[member.pageid];
-      if (!pageData) continue;
+      for (const member of batch) {
+        const idKey = `fandom_${member.pageid}`;
+        
+        if (existingIds.has(idKey)) {
+          totalSkipped++;
+          continue;
+        }
 
-      const characterName = extractCharacterName(member.title);
-      const imageUrl = pageData.thumbnail?.source || null;
+        const pageIdStr = String(member.pageid);
+        const pageData = pageInfo.query?.pages?.[pageIdStr];
+        
+        const characterName = extractCharacterName(member.title);
+        const imageUrl = pageData?.thumbnail?.source || null;
 
-      rows.push({
-        name: characterName,
-        image: imageUrl,
-        media: mediaName,
-        source_api: "fandom",
-        external_id: String(member.pageid),
-      });
+        rows.push({
+          name: characterName,
+          image: imageUrl,
+          media: mediaName,
+          source_api: "fandom",
+          external_id: pageIdStr,
+        });
 
-      existingIds.add(idKey);
+        existingIds.add(idKey);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
     if (rows.length > 0) {
@@ -246,4 +241,3 @@ run().catch((e) => {
   console.error(e);
   process.exit(1);
 });
-
