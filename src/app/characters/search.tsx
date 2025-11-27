@@ -1,19 +1,22 @@
- "use client";
+"use client";
 
- import Image from "next/image";
- import { useEffect, useState } from "react";
- import { supabase } from "../../lib/supabase";
+import Image from "next/image";
+import { useEffect, useState, useMemo } from "react";
+import { createClient } from "@/lib/supabase-client";
+import type { User } from "@supabase/supabase-js";
+import { Heart } from "lucide-react";
+import { AddToListModal } from "@/components/add-to-list-modal";
 import PaginationControls from "./components/pagination";
 
- type CharacterResult = {
-   id: number | null;
-   name: string;
-   image: string | null;
-   popularity?: number | null;
-   mediaTitle?: string | null;
- };
+type CharacterResult = {
+  id: string;
+  name: string;
+  image: string | null;
+  popularity?: number | null;
+  mediaTitle?: string | null;
+};
 
- export default function CharacterSearch() {
+export default function CharacterSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CharacterResult[]>([]);
 
@@ -26,6 +29,53 @@ import PaginationControls from "./components/pagination";
   const [hasMore, setHasMore] = useState(true);
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  const [user, setUser] = useState<User | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [favoriteCount, setFavoriteCount] = useState(0);
+  const [isAddingFavorite, setIsAddingFavorite] = useState(false);
+  const [isAddToListModalOpen, setIsAddToListModalOpen] = useState(false);
+  const [selectedCharacterForList, setSelectedCharacterForList] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!user) {
+      setFavoriteIds(new Set());
+      setFavoriteCount(0);
+      return;
+    }
+
+    async function loadFavorites() {
+      const { data } = await supabase
+        .from("favorite_characters")
+        .select("character_id");
+
+      if (data) {
+        const ids = new Set(data.map((fav) => fav.character_id));
+        setFavoriteIds(ids);
+        setFavoriteCount(ids.size);
+      }
+    }
+
+    loadFavorites();
+  }, [user, supabase]);
 
   useEffect(() => {
     async function loadCatalogue() {
@@ -46,6 +96,7 @@ import PaginationControls from "./components/pagination";
         }
 
         type Row = {
+          id: string;
           name: string;
           image_url: string | null;
           popularity: number | null;
@@ -54,7 +105,7 @@ import PaginationControls from "./components/pagination";
 
         const mapped: CharacterResult[] =
           (data as Row[] | null)?.map((row) => ({
-            id: null, // we don't need external_id here
+            id: row.id,
             name: row.name,
             image: row.image_url,
             popularity: row.popularity,
@@ -69,7 +120,7 @@ import PaginationControls from "./components/pagination";
     }
 
     void loadCatalogue();
-  }, [pageSize, page]);
+  }, [pageSize, page, supabase]);
 
   async function searchCharactersInDb() {
     if (!query.trim()) return;
@@ -98,6 +149,60 @@ import PaginationControls from "./components/pagination";
       console.error("Search error:", error);
       alert("Something went wrong while searching.");
       setResults([]);
+    }
+  }
+
+  async function toggleFavorite(characterId: string, characterName: string) {
+    if (!user) {
+      alert("Please log in to add favorites");
+      return;
+    }
+
+    if (isAddingFavorite) return;
+    setIsAddingFavorite(true);
+
+    try {
+      const isFavorited = favoriteIds.has(characterId);
+
+      if (isFavorited) {
+        const { error } = await supabase
+          .from("favorite_characters")
+          .delete()
+          .eq("character_id", characterId)
+          .eq("user_id", user.id);
+
+        if (error) throw error;
+
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(characterId);
+          return next;
+        });
+        setFavoriteCount((prev) => prev - 1);
+      } else {
+        if (favoriteCount >= 5) {
+          alert("You can only have 5 favorite characters. Remove one first.");
+          setIsAddingFavorite(false);
+          return;
+        }
+
+        const { error } = await supabase
+          .from("favorite_characters")
+          .insert({
+            user_id: user.id,
+            character_id: characterId,
+          });
+
+        if (error) throw error;
+
+        setFavoriteIds((prev) => new Set(prev).add(characterId));
+        setFavoriteCount((prev) => prev + 1);
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      alert("Failed to update favorite");
+    } finally {
+      setIsAddingFavorite(false);
     }
   }
 
@@ -187,37 +292,76 @@ import PaginationControls from "./components/pagination";
           }`}
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {catalogue.map((c, index) => (
-              <div
-                key={`${c.name}-${index}`}
-                className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 transform transition-transform duration-200 hover:scale-105 hover:shadow-md"
-              >
-                {c.image && (
-                  <div className="relative w-full h-64">
-                    <Image
-                      src={c.image}
-                      alt={c.name}
-                      fill
-                      sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"
-                      className="object-cover rounded-md"
-                    />
+            {catalogue.map((c, index) => {
+              const isFavorited = favoriteIds.has(c.id);
+              const canAddFavorite = user && favoriteCount < 5;
+              return (
+                <div
+                  key={`${c.name}-${index}`}
+                  className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 transform transition-transform duration-200 hover:scale-105 hover:shadow-md relative"
+                >
+                  {user && (
+                    <button
+                      onClick={() => toggleFavorite(c.id, c.name)}
+                      disabled={isAddingFavorite || (!isFavorited && !canAddFavorite)}
+                      className={`absolute top-2 right-2 z-10 p-2 rounded-full transition-colors ${
+                        isFavorited
+                          ? "bg-red-500 text-white hover:bg-red-600"
+                          : canAddFavorite
+                          ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                          : "bg-gray-300 dark:bg-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50"
+                      }`}
+                      title={
+                        isFavorited
+                          ? "Remove from favorites"
+                          : canAddFavorite
+                          ? "Add to favorites"
+                          : "Favorite limit reached (5/5)"
+                      }
+                    >
+                      <Heart
+                        className={`h-4 w-4 ${isFavorited ? "fill-current" : ""}`}
+                      />
+                    </button>
+                  )}
+                  {c.image && (
+                    <div className="relative w-full h-64">
+                      <Image
+                        src={c.image}
+                        alt={c.name}
+                        fill
+                        sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"
+                        className="object-cover rounded-md"
+                      />
+                    </div>
+                  )}
+                    <div className="flex-1 space-y-1">
+                      <div className="font-semibold">{c.name}</div>
+                      {c.mediaTitle && (
+                        <div className="text-xs text-gray-600 dark:text-gray-400">
+                          {c.mediaTitle}
+                        </div>
+                      )}
+                      {typeof c.popularity === "number" && (
+                        <div className="text-xs text-gray-500 dark:text-gray-500">
+                          Popularity: {c.popularity}
+                        </div>
+                      )}
+                    </div>
+                    {user && (
+                      <button
+                        onClick={() => {
+                          setSelectedCharacterForList({ id: c.id, name: c.name });
+                          setIsAddToListModalOpen(true);
+                        }}
+                        className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        Add to List
+                      </button>
+                    )}
                   </div>
-                )}
-                <div className="flex-1 space-y-1">
-                  <div className="font-semibold">{c.name}</div>
-                  {c.mediaTitle && (
-                    <div className="text-xs text-gray-600 dark:text-gray-400">
-                      {c.mediaTitle}
-                    </div>
-                  )}
-                  {typeof c.popularity === "number" && (
-                    <div className="text-xs text-gray-500 dark:text-gray-500">
-                      Popularity: {c.popularity}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+                );
+              })}
           </div>
         </div>
       </section>
@@ -257,42 +401,97 @@ import PaginationControls from "./components/pagination";
                 </p>
               )}
 
-              {results.map((c) => (
-                <div
-                  key={c.id ?? c.name}
-                  className="border border-gray-200 dark:border-gray-800 rounded p-3 flex gap-3 items-center"
-                >
-                  {c.image && (
-                    <div className="relative w-12 h-12 flex-shrink-0">
-                      <Image
-                        src={c.image}
-                        alt={c.name}
-                        fill
-                        sizes="48px"
-                        className="rounded object-cover"
-                      />
-                    </div>
-                  )}
-
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{c.name}</div>
-                    {c.mediaTitle && (
-                      <div className="text-xs text-gray-600 dark:text-gray-400">
-                        {c.mediaTitle}
+              {results.map((c) => {
+                if (!c.id) return null;
+                const isFavorited = favoriteIds.has(c.id);
+                const canAddFavorite = user && favoriteCount < 5;
+                return (
+                  <div
+                    key={c.id ?? c.name}
+                    className="border border-gray-200 dark:border-gray-800 rounded p-3 flex gap-3 items-center relative"
+                  >
+                    {user && (
+                      <button
+                        onClick={() => toggleFavorite(c.id!, c.name)}
+                        disabled={isAddingFavorite || (!isFavorited && !canAddFavorite)}
+                        className={`absolute top-2 right-2 p-1.5 rounded-full transition-colors ${
+                          isFavorited
+                            ? "bg-red-500 text-white hover:bg-red-600"
+                            : canAddFavorite
+                            ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                            : "bg-gray-300 dark:bg-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50"
+                        }`}
+                        title={
+                          isFavorited
+                            ? "Remove from favorites"
+                            : canAddFavorite
+                            ? "Add to favorites"
+                            : "Favorite limit reached (5/5)"
+                        }
+                      >
+                        <Heart
+                          className={`h-3 w-3 ${isFavorited ? "fill-current" : ""}`}
+                        />
+                      </button>
+                    )}
+                    {c.image && (
+                      <div className="relative w-12 h-12 flex-shrink-0">
+                        <Image
+                          src={c.image}
+                          alt={c.name}
+                          fill
+                          sizes="48px"
+                          className="rounded object-cover"
+                        />
                       </div>
                     )}
-                    {typeof c.popularity === "number" && (
-                      <div className="text-xs text-gray-500 dark:text-gray-500">
-                        Popularity: {c.popularity}
-                      </div>
+
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">{c.name}</div>
+                      {c.mediaTitle && (
+                        <div className="text-xs text-gray-600 dark:text-gray-400">
+                          {c.mediaTitle}
+                        </div>
+                      )}
+                      {typeof c.popularity === "number" && (
+                        <div className="text-xs text-gray-500 dark:text-gray-500">
+                          Popularity: {c.popularity}
+                        </div>
+                      )}
+                    </div>
+                    {user && (
+                      <button
+                        onClick={() => {
+                          setSelectedCharacterForList({ id: c.id!, name: c.name });
+                          setIsAddToListModalOpen(true);
+                        }}
+                        className="text-xs bg-blue-600 text-white px-2 py-1 rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        Add to List
+                      </button>
                     )}
                   </div>
-                </div>
-                
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
+      )}
+
+      {user && selectedCharacterForList && (
+        <AddToListModal
+          isOpen={isAddToListModalOpen}
+          onClose={() => {
+            setIsAddToListModalOpen(false);
+            setSelectedCharacterForList(null);
+          }}
+          onSuccess={() => {
+            // Refresh favorite status if needed
+          }}
+          user={user}
+          characterId={selectedCharacterForList.id}
+          characterName={selectedCharacterForList.name}
+        />
       )}
       
       <PaginationControls
