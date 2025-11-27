@@ -77,11 +77,56 @@ export default function ProfilePage() {
   useEffect(() => {
     if (hasCheckedAuth.current) return;
     
-    async function loadUser() {
+    async function fetchAndUpdateLocation(userToSet: User): Promise<User> {
+      const needsLocation = !userToSet.user_metadata?.location;
+      const needsCountryCode = !userToSet.user_metadata?.country_code;
+      
+      if (!needsLocation && !needsCountryCode) {
+        return userToSet;
+      }
+      
+      try {
+        const geoResponse = await fetch("/api/geolocation");
+        const geoData = await geoResponse.json();
+        console.log("Geolocation data:", geoData);
+        
+        if (!geoData.country || !geoData.countryCode) {
+          return userToSet;
+        }
+        
+        const updatedMetadata = { ...userToSet.user_metadata };
+        if (needsLocation) updatedMetadata.location = geoData.country;
+        if (needsCountryCode) updatedMetadata.country_code = geoData.countryCode;
+        
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: updatedMetadata,
+        });
+        
+        if (updateError) {
+          console.error("Error updating user location/countryCode:", updateError);
+          return userToSet;
+        }
+        
+        await supabase.auth.refreshSession();
+        const { data: { user: updatedUser } } = await supabase.auth.getUser();
+        
+        if (updatedUser) {
+          console.log("Updated user metadata:", updatedUser.user_metadata);
+          console.log("Extracted profile data:", extractProfileData(updatedUser));
+          return updatedUser;
+        }
+        
+        return userToSet;
+      } catch (error) {
+        console.error("Error setting location:", error);
+        return userToSet;
+      }
+    }
+    
+    async function loadUserSession(): Promise<User | null> {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        router.push("/");
-        return;
+        return null;
       }
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       const userToSet = currentUser || session.user;
@@ -142,6 +187,10 @@ export default function ProfilePage() {
           setProfileData(extractProfileData(userToSet));
         }
       }
+      
+      const finalUser = await fetchAndUpdateLocation(userToSet);
+      setUser(finalUser);
+      setProfileData(extractProfileData(finalUser));
       setLoading(false);
       hasCheckedAuth.current = true;
     }
