@@ -15,7 +15,9 @@ export async function createServerClientInstance() {
       },
       global: {
         headers: {
-          Cookie: cookieStore.toString(),
+          Cookie: Array.from(cookieStore)
+            .map(cookie => `${cookie.name}=${cookie.value}`)
+            .join('; '),
         },
       },
     }
