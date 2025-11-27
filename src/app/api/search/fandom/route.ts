@@ -66,7 +66,29 @@ export async function POST(req: Request) {
     });
 
     const pageInfoResponse = await fetch(`${apiUrl}?${pageInfoParams.toString()}`);
+
+    if (pageInfoResponse.status === 429) {
+      return Response.json(
+        { error: "Rate limit exceeded" },
+        { status: 429 }
+      );
+    }
+
+    if (!pageInfoResponse.ok) {
+      return Response.json(
+        { error: "Failed to fetch page info from Fandom wiki" },
+        { status: 502 }
+      );
+    }
+
     const pageInfoData = await pageInfoResponse.json();
+
+    if (pageInfoData.error) {
+      return Response.json(
+        { error: pageInfoData.error.info || "Fandom API error" },
+        { status: 502 }
+      );
+    }
 
     const mediaName = wikiUrl
       .replace("https://", "")

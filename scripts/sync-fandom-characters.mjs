@@ -127,15 +127,13 @@ function getMediaName(wikiUrl) {
 async function run() {
   const wikiUrl = process.argv[2] || process.env.FANDOM_WIKI_URL || "https://hazbinhotel.fandom.com";
   const categoryName = process.argv[3] || "Characters";
-  const startingPage = parseInt(process.argv[4] || "1", 10);
 
   const fandomBaseUrl = wikiUrl;
   const fandomApiUrl = `${fandomBaseUrl}/api.php`;
 
   console.log(`=== Fandom Character Sync ===`);
   console.log(`Wiki: ${fandomBaseUrl}`);
-  console.log(`Category: ${categoryName}`);
-  console.log(`Starting from page: ${startingPage}\n`);
+  console.log(`Category: ${categoryName}\n`);
 
   const existingIds = await getExistingExternalIds();
   console.log(`Loaded ${existingIds.size} existing Fandom entries\n`);
@@ -148,11 +146,6 @@ async function run() {
 
   while (true) {
     page++;
-    
-    if (page < startingPage) {
-      console.log(`Skipping page ${page} (starting from ${startingPage})...`);
-      continue;
-    }
 
     console.log(`Fetching category members (page ${page})...`);
 
