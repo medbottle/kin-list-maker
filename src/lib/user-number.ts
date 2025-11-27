@@ -3,7 +3,7 @@ export function generateUserNumber(userId: string): string {
   for (let i = 0; i < userId.length; i++) {
     const char = userId.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
+    hash = hash | 0; // Convert to 32-bit signed integer
   }
   
   const number = Math.abs(hash) % 10000;
