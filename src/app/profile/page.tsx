@@ -136,62 +136,8 @@ export default function ProfilePage() {
       }
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       const userToSet = currentUser || session.user;
-      if (userToSet) {
-        const needsLocation = !userToSet.user_metadata?.location;
-        const needsCountryCode = !userToSet.user_metadata?.country_code;
-        
-        if (needsLocation || needsCountryCode) {
-          try {
-            const geoResponse = await fetch("/api/geolocation");
-            const geoData = await geoResponse.json();
-            
-            if (geoData.country && geoData.countryCode) {
-              const updatedMetadata = {
-                ...userToSet.user_metadata,
-              };
-              
-              if (needsLocation) {
-                updatedMetadata.location = geoData.country;
-              }
-              
-              if (needsCountryCode) {
-                updatedMetadata.country_code = geoData.countryCode;
-              }
-              
-              const { error: updateError } = await supabase.auth.updateUser({
-                data: updatedMetadata,
-              });
-              
-              if (updateError) {
-                console.error("Error updating user location/countryCode:", updateError);
-              } else {
-                
-              }
-              
-              await supabase.auth.refreshSession();
-              const { data: { user: updatedUser } } = await supabase.auth.getUser();
-              if (updatedUser) {
-                console.log("Updated user metadata:", updatedUser.user_metadata);
-                console.log("Extracted profile data:", extractProfileData(updatedUser));
-                setUser(updatedUser);
-                setProfileData(extractProfileData(updatedUser));
-              } else {
-                setUser(userToSet);
-                setProfileData(extractProfileData(userToSet));
-              }
-            } else {
-              setUser(userToSet);
-              setProfileData(extractProfileData(userToSet));
-            }
-          } catch (error) {
-            console.error("Error setting location:", error);
-            setUser(userToSet);
-            setProfileData(extractProfileData(userToSet));
-          }
-        } else {
-          setUser(userToSet);
-          setProfileData(extractProfileData(userToSet));
-        }
+      if (!userToSet) {
+        return null;
       }
       
       const finalUser = await fetchAndUpdateLocation(userToSet);
@@ -199,6 +145,7 @@ export default function ProfilePage() {
       setProfileData(extractProfileData(finalUser));
       setLoading(false);
       hasCheckedAuth.current = true;
+      return finalUser;
     }
     
     loadUserSession();
