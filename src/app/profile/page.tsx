@@ -493,11 +493,12 @@ export default function ProfilePage() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-5 gap-4 justify-items-center">
+              <div className="flex justify-center flex-wrap gap-4">
                 {favorites.map((fav) => (
                   <div
                     key={fav.id}
-                    className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 relative w-full"
+                    className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 relative"
+                    style={{ width: '180px' }}
                   >
                     <button
                       onClick={() => removeFavorite(fav.id)}
@@ -576,13 +577,14 @@ export default function ProfilePage() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="flex justify-center flex-wrap gap-6">
                 {lists.map((list) => {
                   const items = listItems.get(list.id) || [];
                   return (
                     <div
                       key={list.id}
                       className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 flex flex-col gap-4 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 bg-white dark:bg-gray-900"
+                      style={{ width: '100%', maxWidth: '350px' }}
                     >
                       <div className="flex items-center justify-between">
                         <h3
@@ -640,10 +642,10 @@ export default function ProfilePage() {
                         <span className="text-xs text-gray-500 dark:text-gray-500">
                           Created: {new Date(list.created_at).toLocaleDateString()}
                         </span>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-shrink-0">
                           <Link
                             href="/characters"
-                            className={`text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+                            className={`text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap ${
                               list.character_count >= 10
                                 ? "opacity-50 cursor-not-allowed"
                                 : ""
@@ -658,19 +660,19 @@ export default function ProfilePage() {
                           </Link>
                           <button
                             onClick={() => handleDeleteClick(list.id, list.name)}
-                            className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 transition-colors"
+                            className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 transition-colors whitespace-nowrap"
                             title="Delete list"
                           >
                             Delete List
                           </button>
                         </div>
-                      </div>
                     </div>
+                  </div>
                   );
                 })}
               </div>
-            )}
-          </section>
+          )}
+        </section>
         </div>
       </div>
 
