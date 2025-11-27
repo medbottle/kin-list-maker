@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase-client";
+import { generateUserNumber } from "@/lib/user-number";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
@@ -38,19 +40,34 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
           window.location.reload();
         }
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              display_name: displayName.trim() || null,
+            },
+          },
         });
 
         if (error) {
           setError(error.message);
-        } else {
+        } else if (data.user) {
+          const userNumber = generateUserNumber(data.user.id);
+          
+          await supabase.auth.updateUser({
+            data: {
+              display_name: displayName.trim() || null,
+              user_number: userNumber,
+            },
+          });
+
           setError(null);
           alert("Account created! Please log in.");
           setMode("login");
           setEmail("");
           setPassword("");
+          setDisplayName("");
         }
       }
     } catch (err) {
@@ -63,6 +80,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
   function handleClose() {
     setEmail("");
     setPassword("");
+    setDisplayName("");
     setError(null);
     setMode(initialMode);
     onClose();
@@ -108,6 +126,19 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
             />
           </div>
 
+          {mode === "signup" && (
+            <div>
+              <input
+                className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 w-full rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Display Name (optional)"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+          )}
+
           <div>
             <input
               className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 w-full rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -142,6 +173,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
             onClick={() => {
               setMode(mode === "login" ? "signup" : "login");
               setError(null);
+              setDisplayName("");
             }}
             className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
           >
