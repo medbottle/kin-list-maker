@@ -49,10 +49,15 @@ export default function Home() {
     async function loadFeaturedCharacters() {
       setIsLoadingCharacters(true);
       try {
+        const defaultImageUrl = "https://s4.anilist.co/file/anilistcdn/character/large/default.jpg";
+        
         const { count, error: countError } = await supabase
           .from("characters")
           .select("*", { count: "exact", head: true })
-          .not("image", "is", null);
+          .not("image", "is", null)
+          .not("image", "eq", defaultImageUrl)
+          .not("media", "eq", "Unknown")
+          .not("media", "ilike", "%unknown%");
 
         if (countError || !count || count === 0) {
           console.error("Error getting character count:", countError);
@@ -74,11 +79,23 @@ export default function Home() {
               .from("characters")
               .select("id, name, image, media")
               .not("image", "is", null)
+              .not("image", "eq", defaultImageUrl)
+              .not("media", "eq", "Unknown")
+              .not("media", "ilike", "%unknown%")
               .range(offset, offset)
               .limit(1)
               .single();
 
             if (error || !data) {
+              return null;
+            }
+
+            const media = data.media?.trim();
+            if (!media || media.toLowerCase() === "unknown") {
+              return null;
+            }
+
+            if (data.image === defaultImageUrl) {
               return null;
             }
 
