@@ -29,7 +29,7 @@ export function AuthStatus() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase.auth]);
+  }, [supabase]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
