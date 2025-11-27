@@ -108,31 +108,22 @@ export default function CharacterSearch() {
   useEffect(() => {
     async function loadAvailableMedia() {
       try {
-        const { data, error } = await supabase
-          .from("characters")
-          .select("media")
-          .order("media");
-
-        if (error) {
-          console.error("Error loading media:", error);
+        const res = await fetch("/api/media/list");
+        if (!res.ok) {
+          console.error("Error loading media:", res.statusText);
           return;
         }
-
-        const mediaSet = new Set<string>();
-        data?.forEach((row) => {
-          if (row.media) {
-            mediaSet.add(row.media);
-          }
-        });
-        const mediaList = Array.from(mediaSet).sort();
-        setAvailableMedia(mediaList);
+        const data = await res.json();
+        if (data.media && Array.isArray(data.media)) {
+          setAvailableMedia(data.media);
+        }
       } catch (error) {
         console.error("Error fetching media:", error);
       }
     }
 
     void loadAvailableMedia();
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     async function loadCatalogue() {
