@@ -5,11 +5,12 @@ import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, X, Trash2 } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import Image from "next/image";
 import { ProfileEditModal } from "@/components/profile-edit-modal";
 import { CreateListModal } from "@/components/create-list-modal";
 import { AddToListModal } from "@/components/add-to-list-modal";
+import { DeleteListModal } from "@/components/delete-list-modal";
 import { extractProfileData, type ProfileData } from "@/lib/profile-utils";
 
 type FavoriteCharacter = {
@@ -51,6 +52,11 @@ export default function ProfilePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateListModalOpen, setIsCreateListModalOpen] = useState(false);
   const [isAddToListModalOpen, setIsAddToListModalOpen] = useState(false);
+  const [isDeleteListModalOpen, setIsDeleteListModalOpen] = useState(false);
+  const [listToDelete, setListToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [selectedCharacterForList, setSelectedCharacterForList] = useState<{
     id: string;
     name: string;
@@ -240,42 +246,8 @@ export default function ProfilePage() {
     setFavorites((prev) => prev.filter((fav) => fav.id !== favoriteId));
   }
 
-  async function removeFromList(listId: string, itemId: string) {
-    const { error } = await supabase
-      .from("list_items")
-      .delete()
-      .eq("id", itemId);
-
-    if (error) {
-      console.error("Error removing from list:", error);
-      alert("Failed to remove character from list");
-      return;
-    }
-
-    setListItems((prev) => {
-      const next = new Map(prev);
-      const items = next.get(listId) || [];
-      next.set(
-        listId,
-        items.filter((item) => item.id !== itemId)
-      );
-      return next;
-    });
-
-    setLists((prev) =>
-      prev.map((list) =>
-        list.id === listId
-          ? { ...list, character_count: list.character_count - 1 }
-          : list
-      )
-    );
-  }
 
   async function deleteList(listId: string) {
-    if (!confirm("Are you sure you want to delete this list? This cannot be undone.")) {
-      return;
-    }
-
     const { error } = await supabase
       .from("user_lists")
       .delete()
@@ -293,6 +265,11 @@ export default function ProfilePage() {
       next.delete(listId);
       return next;
     });
+  }
+
+  function handleDeleteClick(listId: string, listName: string) {
+    setListToDelete({ id: listId, name: listName });
+    setIsDeleteListModalOpen(true);
   }
 
   function refreshData() {
@@ -562,18 +539,20 @@ export default function ProfilePage() {
                   </span>
                 )}
               </h2>
-              <button
-                onClick={() => setIsCreateListModalOpen(true)}
-                disabled={lists.length >= 3}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                title={
-                  lists.length >= 3
-                    ? "You can only have 3 lists. Delete one first."
-                    : "Create a new list"
-                }
-              >
-                Create List
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsCreateListModalOpen(true)}
+                  disabled={lists.length >= 3}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  title={
+                    lists.length >= 3
+                      ? "You can only have 3 lists. Delete one first."
+                      : "Create a new list"
+                  }
+                >
+                  Create List
+                </button>
+              </div>
             </div>
 
             {listsLoading ? (
@@ -593,108 +572,91 @@ export default function ProfilePage() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {lists.map((list) => {
                   const items = listItems.get(list.id) || [];
                   return (
                     <div
                       key={list.id}
-                      className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 hover:shadow-md transition-shadow"
+                      className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 flex flex-col gap-4 hover:shadow-lg transition-shadow bg-white dark:bg-gray-900"
                     >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                              {list.name}
-                            </h3>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
-                              ({list.character_count}/10)
-                            </span>
-                          </div>
-                          {list.description && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                              {list.description}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-500">
-                            <span>
-                              Created:{" "}
-                              {new Date(list.created_at).toLocaleDateString()}
-                            </span>
-                            <span>
-                              Updated:{" "}
-                              {new Date(list.updated_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => deleteList(list.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
-                          title="Delete list"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      <div className="mb-4">
-                        <Link
-                          href="/characters"
-                          className={`inline-block text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-                            list.character_count >= 10
-                              ? "opacity-50 cursor-not-allowed"
-                              : ""
-                          }`}
-                          title={
-                            list.character_count >= 10
-                              ? "List is full (10/10)"
-                              : "Go to characters page to add characters"
-                          }
-                        >
-                          Add Characters
-                        </Link>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                          {list.name}
+                        </h3>
+                        <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                          ({list.character_count}/10)
+                        </span>
                       </div>
 
                       {items.length === 0 ? (
-                        <p className="text-sm text-gray-500 dark:text-gray-500 italic">
-                          No characters in this list yet.
-                        </p>
+                        <div className="flex items-center justify-center h-64 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+                          <p className="text-sm text-gray-500 dark:text-gray-500 italic">
+                            No characters yet
+                          </p>
+                        </div>
                       ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                          {items.map((item) => (
+                        <div className="grid grid-cols-2 gap-3">
+                          {items.slice(0, 4).map((item) => (
                             <div
                               key={item.id}
-                              className="border border-gray-200 dark:border-gray-700 rounded-lg p-2 relative group"
+                              className="rounded-lg overflow-hidden hover:shadow-md transition-shadow aspect-square"
                             >
-                              <button
-                                onClick={() => removeFromList(list.id, item.id)}
-                                className="absolute top-1 right-1 z-10 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
-                                title="Remove from list"
-                              >
-                                <X className="h-2.5 w-2.5" />
-                              </button>
-                              {item.character_image && (
-                                <div className="relative w-full h-32 mb-2">
+                              {item.character_image ? (
+                                <div className="relative w-full h-full">
                                   <Image
                                     src={item.character_image}
                                     alt={item.character_name}
                                     fill
-                                    sizes="(min-width: 768px) 25vw, 33vw, 50vw"
-                                    className="object-cover rounded"
+                                    sizes="(min-width: 1024px) 50vw, 50vw"
+                                    className="object-cover"
                                   />
                                 </div>
-                              )}
-                              <div className="text-xs font-medium text-gray-900 dark:text-white truncate">
-                                {item.character_name}
-                              </div>
-                              {item.character_media_title && (
-                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                  {item.character_media_title}
+                              ) : (
+                                <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                  <span className="text-xs text-gray-400">?</span>
                                 </div>
                               )}
                             </div>
                           ))}
                         </div>
                       )}
+
+                      {list.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                          {list.description}
+                        </p>
+                      )}
+
+                      <div className="mt-auto pt-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3">
+                        <span className="text-xs text-gray-500 dark:text-gray-500">
+                          Created: {new Date(list.created_at).toLocaleDateString()}
+                        </span>
+                        <div className="flex gap-2">
+                          <Link
+                            href="/characters"
+                            className={`text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+                              list.character_count >= 10
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                            }`}
+                            title={
+                              list.character_count >= 10
+                                ? "List is full (10/10)"
+                                : "Go to characters page to add characters"
+                            }
+                          >
+                            Add Characters
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteClick(list.id, list.name)}
+                            className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 transition-colors"
+                            title="Delete list"
+                          >
+                            Delete List
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -742,6 +704,22 @@ export default function ProfilePage() {
               user={user}
               characterId={selectedCharacterForList.id}
               characterName={selectedCharacterForList.name}
+            />
+          )}
+
+          {listToDelete && (
+            <DeleteListModal
+              isOpen={isDeleteListModalOpen}
+              onClose={() => {
+                setIsDeleteListModalOpen(false);
+                setListToDelete(null);
+              }}
+              onConfirm={() => {
+                if (listToDelete) {
+                  deleteList(listToDelete.id);
+                }
+              }}
+              listName={listToDelete.name}
             />
           )}
         </>
