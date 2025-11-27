@@ -1,4 +1,4 @@
-export type SourceAPI = "anilist" | "tmdb" | "rawg";
+export type SourceAPI = "anilist" | "tmdb" | "rawg" | "fandom";
 
 export interface Character {
   id: string;
