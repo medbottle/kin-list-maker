@@ -11,7 +11,7 @@ export default function CharactersPage() {
     <main className="p-8 space-y-6 relative min-h-screen">
       <button
         onClick={() => router.back()}
-        className="fixed"
+        className="fixed top-24 left-8"
         title="Go back"
         aria-label="Go back"
       >
