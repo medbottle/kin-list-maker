@@ -248,22 +248,25 @@ export default function ListPage() {
           )}
 
           <div className="flex items-center justify-end">
-            <Link
-              href="/characters"
-              className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm ${
-                list.character_count >= 10
-                  ? "opacity-50 cursor-not-allowed"
-                  : ""
-              }`}
-              title={
-                list.character_count >= 10
-                  ? "List is full (10/10)"
-                  : "Add characters"
-              }
-            >
-              <Plus className="h-4 w-4" />
-              Add Characters
-            </Link>
+            {list.character_count >= 10 ? (
+              <button
+                disabled
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md opacity-50 cursor-not-allowed transition-colors text-sm"
+                title="List is full (10/10)"
+              >
+                <Plus className="h-4 w-4" />
+                Add Characters
+              </button>
+            ) : (
+              <Link
+                href="/characters"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                title="Add characters"
+              >
+                <Plus className="h-4 w-4" />
+                Add Characters
+              </Link>
+            )}
           </div>
         </div>
 
