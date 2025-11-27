@@ -1,3 +1,6 @@
+// TODO: Migrate from @supabase/auth-helpers-nextjs to @supabase/ssr
+// The @supabase/auth-helpers-nextjs package is deprecated.
+// See: https://github.com/supabase/auth-helpers
 import { createPagesBrowserClient } from "@supabase/auth-helpers-nextjs";
 
 export function createClient() {
