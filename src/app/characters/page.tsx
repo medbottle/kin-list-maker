@@ -13,6 +13,7 @@ export default function CharactersPage() {
         onClick={() => router.back()}
         className="fixed"
         title="Go back"
+        aria-label="Go back"
       >
         <ArrowLeft className="h-10 w-10 transition-transform duration-200 hover:scale-110" />
       </button>

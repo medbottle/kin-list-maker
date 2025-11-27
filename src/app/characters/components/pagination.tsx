@@ -34,6 +34,7 @@ export default function PaginationControls({
           disabled={!hasMore || isLoading}
           className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           title="Next page"
+          aria-label="Next page"
         >
           <ChevronRight className="h-5 w-5" />
         </button>

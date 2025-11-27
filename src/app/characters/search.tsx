@@ -241,6 +241,7 @@ export default function CharacterSearch() {
           <button
             onClick={() => setIsSearchOpen(true)}
             className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Search characters"
             >
             <Search className="h-4 w-4" />
           </button>
@@ -407,6 +408,7 @@ export default function CharacterSearch() {
                 onClick={() => setIsSearchOpen(false)}
                 className="p-2 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
                 title="Close"
+                aria-label="Close"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -429,6 +431,7 @@ export default function CharacterSearch() {
                   onClick={searchCharactersInDb}
                   className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   title="Search"
+                  aria-label="Search"
                 >
                   <Search className="h-4 w-4" />
                 </button>
