@@ -27,7 +27,6 @@ export async function GET() {
       }
 
       if (!data || data.length === 0) {
-        hasMore = false;
         break;
       }
 
