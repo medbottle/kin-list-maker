@@ -56,11 +56,13 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
           const userNumber = generateUserNumber(data.user.id);
           
           let location = null;
+          let countryCode = null;
           try {
             const geoResponse = await fetch("/api/geolocation");
             const geoData = await geoResponse.json();
             if (geoData.country) {
               location = geoData.country;
+              countryCode = geoData.countryCode;
             }
           } catch (error) {
             console.error("Error fetching location:", error);
@@ -71,6 +73,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
               display_name: displayName.trim() || null,
               user_number: userNumber,
               location: location,
+              country_code: countryCode,
             },
           });
 
@@ -82,7 +85,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
           setDisplayName("");
         }
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);
