@@ -272,6 +272,10 @@ export default function ProfilePage() {
     setIsDeleteListModalOpen(true);
   }
 
+  function handleListNameClick(listId: string) {
+    router.push(`/profile/lists/${listId}`);
+  }
+
   function refreshData() {
     if (!user) return;
 
@@ -581,7 +585,11 @@ export default function ProfilePage() {
                       className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 flex flex-col gap-4 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 bg-white dark:bg-gray-900"
                     >
                       <div className="flex items-center justify-between">
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                        <h3
+                          className="text-xl font-semibold text-gray-900 dark:text-white cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          onClick={() => handleListNameClick(list.id)}
+                          title="Click to view and edit list"
+                        >
                           {list.name}
                         </h3>
                         <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
@@ -722,6 +730,7 @@ export default function ProfilePage() {
               listName={listToDelete.name}
             />
           )}
+
         </>
       )}
     </main>
