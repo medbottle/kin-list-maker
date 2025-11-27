@@ -134,7 +134,6 @@ export function ProfileEditModal({
       } = await supabase.auth.getSession();
       
       if (session?.user) {
-        console.log("Updated user metadata:", session.user.user_metadata);
       }
       
       onUpdate();
