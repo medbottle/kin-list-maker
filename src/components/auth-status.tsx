@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import { AuthModal } from "./auth-modal";
+import { LogOut } from "lucide-react";
 
 export function AuthStatus() {
   const [user, setUser] = useState<User | null>(null);
@@ -47,9 +48,10 @@ export function AuthStatus() {
           </p>
           <button
             onClick={handleLogout}
-            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm"
+            className="bg-red-600 text-white p-2 rounded-md transition-colors hover:bg-red-700 hover:scale-110"
+            title="Logout"
           >
-            Logout
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </>
