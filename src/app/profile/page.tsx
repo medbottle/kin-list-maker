@@ -14,6 +14,7 @@ import { AddToListModal } from "@/components/add-to-list-modal";
 import { DeleteListModal } from "@/components/delete-list-modal";
 import { RemoveFavoriteModal } from "@/components/remove-favorite-modal";
 import { extractProfileData, type ProfileData } from "@/lib/profile-utils";
+import { getGeolocation } from "@/lib/geolocation";
 
 type FavoriteCharacter = {
   id: string;
@@ -84,7 +85,6 @@ export default function ProfilePage() {
     if (hasCheckedAuth.current) return;
     
     async function fetchAndUpdateLocation(userToSet: User): Promise<User> {
-      // If user already has a country code (flag), skip geolocation fetch to avoid rate limits
       if (userToSet.user_metadata?.country_code) {
         console.log("User already has country code, skipping geolocation fetch");
         return userToSet;
@@ -98,12 +98,7 @@ export default function ProfilePage() {
       }
       
       try {
-        const geoResponse = await fetch("/api/geolocation");
-        if (!geoResponse.ok) {
-          console.warn("Geolocation API returned error:", geoResponse.status);
-          return userToSet;
-        }
-        const geoData = await geoResponse.json();
+        const geoData = await getGeolocation();
         console.log("Geolocation data:", geoData);
         
         if (!geoData.country || !geoData.countryCode) {
