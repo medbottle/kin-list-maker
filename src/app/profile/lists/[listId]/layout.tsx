@@ -1,5 +1,4 @@
-import { metadataByPath } from "@/lib/metadata";
-import { siteMetadata } from "@/lib/siteMetadata";
+import { metadataByPath, siteMetadata } from "@/lib/metadata";
 
 export const metadata = {
   ...metadataByPath["/profile"],
