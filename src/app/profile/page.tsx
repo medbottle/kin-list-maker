@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import { ProfileEditModal } from "@/components/profile-edit-modal";
+import { generateUserNumber } from "@/lib/user-number";
 
 type FavoriteCharacter = {
   id: string;
@@ -38,6 +39,7 @@ export default function ProfilePage() {
     displayName: null as string | null,
     gender: null as string | null,
     profilePicture: null as string | null,
+    userNumber: null as string | null,
   });
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -53,10 +55,20 @@ export default function ProfilePage() {
       }
       setUser(session.user);
       if (session.user.user_metadata) {
+        const userNumber = session.user.user_metadata.user_number || generateUserNumber(session.user.id);
         setProfileData({
           displayName: session.user.user_metadata.display_name || null,
           gender: session.user.user_metadata.gender || null,
           profilePicture: session.user.user_metadata.profile_picture || null,
+          userNumber: userNumber,
+        });
+      } else {
+        const userNumber = generateUserNumber(session.user.id);
+        setProfileData({
+          displayName: null,
+          gender: null,
+          profilePicture: null,
+          userNumber: userNumber,
         });
       }
       setLoading(false);
@@ -73,19 +85,23 @@ export default function ProfilePage() {
       if (event === "USER_UPDATED" && session) {
         setUser(session.user);
         if (session.user.user_metadata) {
+          const userNumber = session.user.user_metadata.user_number || generateUserNumber(session.user.id);
           setProfileData({
             displayName: session.user.user_metadata.display_name || null,
             gender: session.user.user_metadata.gender || null,
             profilePicture: session.user.user_metadata.profile_picture || null,
+            userNumber: userNumber,
           });
         }
       } else if (session && !hasCheckedAuth.current) {
         setUser(session.user);
         if (session.user.user_metadata) {
+          const userNumber = session.user.user_metadata.user_number || generateUserNumber(session.user.id);
           setProfileData({
             displayName: session.user.user_metadata.display_name || null,
             gender: session.user.user_metadata.gender || null,
             profilePicture: session.user.user_metadata.profile_picture || null,
+            userNumber: userNumber,
           });
         }
         setLoading(false);
@@ -203,6 +219,11 @@ export default function ProfilePage() {
               <div>
                 <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
                   {profileData.displayName || user.email}
+                  {profileData.displayName && profileData.userNumber && (
+                    <span className="text-2xl text-gray-500 dark:text-gray-400 font-normal ml-2">
+                      #{profileData.userNumber}
+                    </span>
+                  )}
                 </h1>
                 <div className="space-y-2">
                   <p className="text-lg text-gray-600 dark:text-gray-400">
@@ -348,10 +369,12 @@ export default function ProfilePage() {
           if (session?.user) {
             setUser(session.user);
             const metadata = session.user.user_metadata || {};
+            const userNumber = metadata.user_number || generateUserNumber(session.user.id);
             setProfileData({
               displayName: metadata.display_name || null,
               gender: metadata.gender || null,
               profilePicture: metadata.profile_picture || null,
+              userNumber: userNumber,
             });
           }
         }}
