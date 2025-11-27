@@ -200,7 +200,7 @@ export function AddToListModal({
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-md w-full mx-4 p-6 space-y-4 max-h-[80vh] flex flex-col">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Add "{characterName}" to Lists
+            Add {characterName} to...
           </h2>
           <button
             onClick={onClose}
