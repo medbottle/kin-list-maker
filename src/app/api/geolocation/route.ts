@@ -45,14 +45,27 @@ export async function GET(req: NextRequest) {
       apiUrl = `https://ip-api.com/json/${cacheKey}?fields=status,message,country,countryCode`;
     }
 
-    const response = await fetch(apiUrl);
+    const response = await fetch(apiUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; Next.js Geolocation)',
+      },
+    });
 
     if (response.status === 429) {
       // Too Many Requests - rate limit hit
       console.error("ip-api.com rate limit exceeded (429)");
       return NextResponse.json(
         { country: null, countryCode: null, error: "Rate limit exceeded" },
-        { status: 429 }
+        { status: 200 }
+      );
+    }
+
+    if (response.status === 403) {
+      // Forbidden - API might be blocking the request
+      console.error("ip-api.com forbidden (403) - API may be blocking requests");
+      return NextResponse.json(
+        { country: null, countryCode: null, error: "Geolocation service unavailable" },
+        { status: 200 }
       );
     }
 
@@ -61,7 +74,7 @@ export async function GET(req: NextRequest) {
       console.error("ip-api.com error:", response.status, response.statusText);
       return NextResponse.json(
         { country: null, countryCode: null, error: "Geolocation API error" },
-        { status: response.status }
+        { status: 200 }
       );
     }
 

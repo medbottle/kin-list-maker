@@ -84,6 +84,12 @@ export default function ProfilePage() {
     if (hasCheckedAuth.current) return;
     
     async function fetchAndUpdateLocation(userToSet: User): Promise<User> {
+      // If user already has a country code (flag), skip geolocation fetch to avoid rate limits
+      if (userToSet.user_metadata?.country_code) {
+        console.log("User already has country code, skipping geolocation fetch");
+        return userToSet;
+      }
+      
       const needsLocation = !userToSet.user_metadata?.location;
       const needsCountryCode = !userToSet.user_metadata?.country_code;
       
@@ -93,6 +99,10 @@ export default function ProfilePage() {
       
       try {
         const geoResponse = await fetch("/api/geolocation");
+        if (!geoResponse.ok) {
+          console.warn("Geolocation API returned error:", geoResponse.status);
+          return userToSet;
+        }
         const geoData = await geoResponse.json();
         console.log("Geolocation data:", geoData);
         
@@ -113,7 +123,12 @@ export default function ProfilePage() {
           return userToSet;
         }
         
+        // Refresh session to ensure metadata is updated
         await supabase.auth.refreshSession();
+        
+        // Wait a moment for the refresh to propagate
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
         const { data: { user: updatedUser } } = await supabase.auth.getUser();
         
         if (updatedUser) {
@@ -158,14 +173,17 @@ export default function ProfilePage() {
         return;
       }
       if (event === "USER_UPDATED" && session) {
-        supabase.auth.getUser().then(({ data: { user: updatedUser } }) => {
-          if (updatedUser) {
-            setUser(updatedUser);
-            setProfileData(extractProfileData(updatedUser));
-          } else if (session.user) {
-            setUser(session.user);
-            setProfileData(extractProfileData(session.user));
-          }
+        // Refresh session to get latest metadata
+        supabase.auth.refreshSession().then(() => {
+          supabase.auth.getUser().then(({ data: { user: updatedUser } }) => {
+            if (updatedUser) {
+              setUser(updatedUser);
+              setProfileData(extractProfileData(updatedUser));
+            } else if (session.user) {
+              setUser(session.user);
+              setProfileData(extractProfileData(session.user));
+            }
+          });
         });
       } else if (session && !hasCheckedAuth.current) {
         async function loadUserForSession() {

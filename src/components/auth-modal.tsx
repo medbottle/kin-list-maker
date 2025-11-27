@@ -59,10 +59,14 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
           let countryCode = null;
           try {
             const geoResponse = await fetch("/api/geolocation");
-            const geoData = await geoResponse.json();
-            if (geoData.country) {
-              location = geoData.country;
-              countryCode = geoData.countryCode;
+            if (geoResponse.ok) {
+              const geoData = await geoResponse.json();
+              if (geoData.country && geoData.countryCode) {
+                location = geoData.country;
+                countryCode = geoData.countryCode;
+              }
+            } else {
+              console.warn("Geolocation API returned error:", geoResponse.status);
             }
           } catch (error) {
             console.error("Error fetching location:", error);
@@ -81,6 +85,8 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
             console.error("Failed to update user metadata:", updateError);
             setError("Account created but failed to save profile information. Please try updating your profile after logging in.");
           } else {
+            // Refresh session to ensure metadata is saved
+            await supabase.auth.refreshSession();
             setError(null);
             alert("Account created! Please log in.");
           }
