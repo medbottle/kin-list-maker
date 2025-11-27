@@ -300,30 +300,6 @@ export default function CharacterSearch() {
                   key={`${c.name}-${index}`}
                   className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 transform transition-transform duration-200 hover:scale-105 hover:shadow-md relative"
                 >
-                  {user && (
-                    <button
-                      onClick={() => toggleFavorite(c.id, c.name)}
-                      disabled={isAddingFavorite || (!isFavorited && !canAddFavorite)}
-                      className={`absolute top-2 right-2 z-10 p-2 rounded-full transition-colors ${
-                        isFavorited
-                          ? "bg-red-500 text-white hover:bg-red-600"
-                          : canAddFavorite
-                          ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
-                          : "bg-gray-300 dark:bg-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50"
-                      }`}
-                      title={
-                        isFavorited
-                          ? "Remove from favorites"
-                          : canAddFavorite
-                          ? "Add to favorites"
-                          : "Favorite limit reached (5/5)"
-                      }
-                    >
-                      <Heart
-                        className={`h-4 w-4 ${isFavorited ? "fill-current" : ""}`}
-                      />
-                    </button>
-                  )}
                   {c.image && (
                     <div className="relative w-full h-64">
                       <Image
@@ -349,15 +325,39 @@ export default function CharacterSearch() {
                       )}
                     </div>
                     {user && (
-                      <button
-                        onClick={() => {
-                          setSelectedCharacterForList({ id: c.id, name: c.name });
-                          setIsAddToListModalOpen(true);
-                        }}
-                        className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 transition-colors"
-                      >
-                        Add to List
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => toggleFavorite(c.id, c.name)}
+                          disabled={isAddingFavorite || (!isFavorited && !canAddFavorite)}
+                          className={`p-2 rounded-full transition-colors ${
+                            isFavorited
+                              ? "bg-red-500 text-white hover:bg-red-600"
+                              : canAddFavorite
+                              ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                              : "bg-gray-300 dark:bg-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50"
+                          }`}
+                          title={
+                            isFavorited
+                              ? "Remove from favorites"
+                              : canAddFavorite
+                              ? "Add to favorites"
+                              : "Favorite limit reached (5/5)"
+                          }
+                        >
+                          <Heart
+                            className={`h-4 w-4 ${isFavorited ? "fill-current" : ""}`}
+                          />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedCharacterForList({ id: c.id, name: c.name });
+                            setIsAddToListModalOpen(true);
+                          }}
+                          className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 transition-colors"
+                        >
+                          Add to List
+                        </button>
+                      </div>
                     )}
                   </div>
                 );
@@ -410,30 +410,6 @@ export default function CharacterSearch() {
                     key={c.id ?? c.name}
                     className="border border-gray-200 dark:border-gray-800 rounded p-3 flex gap-3 items-center relative"
                   >
-                    {user && (
-                      <button
-                        onClick={() => toggleFavorite(c.id!, c.name)}
-                        disabled={isAddingFavorite || (!isFavorited && !canAddFavorite)}
-                        className={`absolute top-2 right-2 p-1.5 rounded-full transition-colors ${
-                          isFavorited
-                            ? "bg-red-500 text-white hover:bg-red-600"
-                            : canAddFavorite
-                            ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
-                            : "bg-gray-300 dark:bg-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50"
-                        }`}
-                        title={
-                          isFavorited
-                            ? "Remove from favorites"
-                            : canAddFavorite
-                            ? "Add to favorites"
-                            : "Favorite limit reached (5/5)"
-                        }
-                      >
-                        <Heart
-                          className={`h-3 w-3 ${isFavorited ? "fill-current" : ""}`}
-                        />
-                      </button>
-                    )}
                     {c.image && (
                       <div className="relative w-12 h-12 flex-shrink-0">
                         <Image
@@ -460,15 +436,39 @@ export default function CharacterSearch() {
                       )}
                     </div>
                     {user && (
-                      <button
-                        onClick={() => {
-                          setSelectedCharacterForList({ id: c.id!, name: c.name });
-                          setIsAddToListModalOpen(true);
-                        }}
-                        className="text-xs bg-blue-600 text-white px-2 py-1 rounded-md hover:bg-blue-700 transition-colors"
-                      >
-                        Add to List
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => toggleFavorite(c.id!, c.name)}
+                          disabled={isAddingFavorite || (!isFavorited && !canAddFavorite)}
+                          className={`p-1.5 rounded-full transition-colors ${
+                            isFavorited
+                              ? "bg-red-500 text-white hover:bg-red-600"
+                              : canAddFavorite
+                              ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                              : "bg-gray-300 dark:bg-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50"
+                          }`}
+                          title={
+                            isFavorited
+                              ? "Remove from favorites"
+                              : canAddFavorite
+                              ? "Add to favorites"
+                              : "Favorite limit reached (5/5)"
+                          }
+                        >
+                          <Heart
+                            className={`h-3 w-3 ${isFavorited ? "fill-current" : ""}`}
+                          />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedCharacterForList({ id: c.id!, name: c.name });
+                            setIsAddToListModalOpen(true);
+                          }}
+                          className="text-xs bg-blue-600 text-white px-2 py-1 rounded-md hover:bg-blue-700 transition-colors"
+                        >
+                          Add to List
+                        </button>
+                      </div>
                     )}
                   </div>
                 );
