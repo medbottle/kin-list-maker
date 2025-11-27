@@ -24,9 +24,8 @@ export async function POST(req: Request) {
   try {
     const { data, error } = await supabase
       .from("characters")
-      .select("id, name, image_url, source, external_id, popularity, media_title")
+      .select("id, name, image, media, source_api")
       .ilike("name", `%${trimmed}%`)
-      .order("popularity", { ascending: false, nullsFirst: false })
       .order("name")
       .limit(25);
 
@@ -41,10 +40,9 @@ export async function POST(req: Request) {
       data?.map((row) => ({
         id: row.id,
         name: row.name,
-        image: row.image_url as string | null,
-        source: row.source as string,
-        popularity: (row as any).popularity as number | null,
-        mediaTitle: (row as any).media_title as string | null,
+        image: row.image as string | null,
+        media: row.media as string,
+        source_api: row.source_api as string,
       })) ?? [];
 
     return Response.json({ characters });
