@@ -218,11 +218,15 @@ export default function ListPage() {
 
   return (
     <main className="min-h-screen p-8 bg-white dark:bg-black">
+      <button
+        onClick={() => router.back()}
+        className="fixed top-24 left-8"
+        title="Go back"
+        aria-label="Go back"
+      >
+        <ArrowLeft className="h-10 w-10 transition-transform duration-200 hover:scale-110" />
+      </button>
       <div className="max-w-5xl mx-auto space-y-6">
-        <Link href="/profile" className="inline-block">
-          <ArrowLeft className="h-10 w-10 transition-transform duration-200 hover:scale-110" />
-        </Link>
-
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-semibold text-gray-900 dark:text-white">
