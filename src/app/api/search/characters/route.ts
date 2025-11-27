@@ -41,8 +41,8 @@ export async function POST(req: Request) {
         id: row.id,
         name: row.name,
         image: row.image as string | null,
-        media: (row as any).media as string,
-        source_api: (row as any).source_api as string,
+        media: row.media as string,
+        source_api: row.source_api as string,
       })) ?? [];
 
     return Response.json({ characters });
