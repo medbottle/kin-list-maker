@@ -478,14 +478,7 @@ export default function ProfilePage() {
             ) : favorites.length === 0 ? (
               <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-8 text-center">
                 <p className="text-gray-600 dark:text-gray-400">
-                  No favorite characters yet. Start adding some from the{" "}
-                  <Link
-                    href="/characters"
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    characters page
-                  </Link>
-                  !
+                  No favorite characters yet.
                 </p>
               </div>
             ) : (
