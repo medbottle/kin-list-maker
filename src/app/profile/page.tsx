@@ -129,17 +129,63 @@ export default function ProfilePage() {
         return null;
       }
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      return currentUser || session.user;
-    }
-    
-    async function loadUser() {
-      const userToSet = await loadUserSession();
-      
-      if (!userToSet) {
-        router.push("/");
-        setLoading(false);
-        hasCheckedAuth.current = true;
-        return;
+      const userToSet = currentUser || session.user;
+      if (userToSet) {
+        const needsLocation = !userToSet.user_metadata?.location;
+        const needsCountryCode = !userToSet.user_metadata?.country_code;
+        
+        if (needsLocation || needsCountryCode) {
+          try {
+            const geoResponse = await fetch("/api/geolocation");
+            const geoData = await geoResponse.json();
+            
+            if (geoData.country && geoData.countryCode) {
+              const updatedMetadata = {
+                ...userToSet.user_metadata,
+              };
+              
+              if (needsLocation) {
+                updatedMetadata.location = geoData.country;
+              }
+              
+              if (needsCountryCode) {
+                updatedMetadata.country_code = geoData.countryCode;
+              }
+              
+              const { error: updateError } = await supabase.auth.updateUser({
+                data: updatedMetadata,
+              });
+              
+              if (updateError) {
+                console.error("Error updating user location/countryCode:", updateError);
+              } else {
+                
+              }
+              
+              await supabase.auth.refreshSession();
+              const { data: { user: updatedUser } } = await supabase.auth.getUser();
+              if (updatedUser) {
+                console.log("Updated user metadata:", updatedUser.user_metadata);
+                console.log("Extracted profile data:", extractProfileData(updatedUser));
+                setUser(updatedUser);
+                setProfileData(extractProfileData(updatedUser));
+              } else {
+                setUser(userToSet);
+                setProfileData(extractProfileData(userToSet));
+              }
+            } else {
+              setUser(userToSet);
+              setProfileData(extractProfileData(userToSet));
+            }
+          } catch (error) {
+            console.error("Error setting location:", error);
+            setUser(userToSet);
+            setProfileData(extractProfileData(userToSet));
+          }
+        } else {
+          setUser(userToSet);
+          setProfileData(extractProfileData(userToSet));
+        }
       }
       
       const finalUser = await fetchAndUpdateLocation(userToSet);
@@ -531,9 +577,7 @@ export default function ProfilePage() {
                       className="inline-block"
                       title={profileData.location || ""}
                     />
-                  ) : (
-                    <span className="text-xs text-gray-400">(No flag - code: {profileData.countryCode || "null"})</span>
-                  )}
+                  ) : null}
                 </h1>
                 
                 {profileData.gender && profileData.gender.trim() !== "" && (

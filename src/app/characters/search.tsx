@@ -1,12 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import { Heart, Search, ListPlus, X } from "lucide-react";
 import { AddToListModal } from "@/components/add-to-list-modal";
 import PaginationControls from "./components/pagination";
+import { loadCharacterListCounts } from "@/lib/list-counts";
 
 type CharacterResult = {
   id: string;
@@ -56,6 +57,12 @@ export default function CharacterSearch() {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
+  const refreshListCounts = useCallback(async () => {
+    if (!user) return;
+    const counts = await loadCharacterListCounts(supabase);
+    setCharacterListCounts(counts);
+  }, [user, supabase]);
+
   useEffect(() => {
     if (!user) {
       setFavoriteIds(new Set());
@@ -76,26 +83,9 @@ export default function CharacterSearch() {
       }
     }
 
-    async function loadListCounts() {
-      const { data: listItems } = await supabase
-        .from("list_items")
-        .select("character_id");
-
-      if (listItems) {
-        const counts = new Map<string, number>();
-        listItems.forEach((item) => {
-          if (item.character_id) {
-            const current = counts.get(item.character_id) || 0;
-            counts.set(item.character_id, current + 1);
-          }
-        });
-        setCharacterListCounts(counts);
-      }
-    }
-
     loadFavorites();
-    loadListCounts();
-  }, [user, supabase]);
+    refreshListCounts();
+  }, [user, supabase, refreshListCounts]);
 
   useEffect(() => {
     async function loadCatalogue() {
@@ -541,25 +531,7 @@ export default function CharacterSearch() {
             setIsAddToListModalOpen(false);
             setSelectedCharacterForList(null);
           }}
-          onSuccess={async () => {
-            // Refresh list counts after adding/removing from lists
-            if (user) {
-              const { data: listItems } = await supabase
-                .from("list_items")
-                .select("character_id");
-
-              if (listItems) {
-                const counts = new Map<string, number>();
-                listItems.forEach((item) => {
-                  if (item.character_id) {
-                    const current = counts.get(item.character_id) || 0;
-                    counts.set(item.character_id, current + 1);
-                  }
-                });
-                setCharacterListCounts(counts);
-              }
-            }
-          }}
+          onSuccess={refreshListCounts}
           user={user}
           characterId={selectedCharacterForList.id}
           characterName={selectedCharacterForList.name}
