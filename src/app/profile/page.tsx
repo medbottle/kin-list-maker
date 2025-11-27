@@ -441,18 +441,13 @@ export default function ProfilePage() {
                     </span>
                   )}
                 </h1>
-                <div className="space-y-2">
-                  <p className="text-lg text-gray-600 dark:text-gray-400">
-                    <span className="font-semibold">Email:</span> {user.email}
+                {profileData.gender && profileData.gender.trim() !== "" && (
+                  <p className="text-sm text-gray-500 dark:text-gray-500">
+                    <span className="font-semibold">Gender:</span>{" "}
+                    {profileData.gender.charAt(0).toUpperCase() +
+                      profileData.gender.slice(1).replace(/-/g, " ")}
                   </p>
-                  {profileData.gender && profileData.gender.trim() !== "" && (
-                    <p className="text-sm text-gray-500 dark:text-gray-500">
-                      <span className="font-semibold">Gender:</span>{" "}
-                      {profileData.gender.charAt(0).toUpperCase() +
-                        profileData.gender.slice(1).replace(/-/g, " ")}
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
             </div>
             <button
