@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import { AuthModal } from "./auth-modal";
-import { LogOut, LogIn } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 export function AuthStatus() {
   const [user, setUser] = useState<User | null>(null);
@@ -64,10 +64,9 @@ export function AuthStatus() {
         <p className="text-sm text-gray-500 dark:text-gray-400">Not logged in</p>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-green-600 text-white p-2 rounded-md transition-colors hover:bg-green-700 hover:scale-110"
-          title="Login"
+          className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
         >
-          <LogIn className="h-4 w-4" />
+          Login
         </button>
       </div>
       <AuthModal
