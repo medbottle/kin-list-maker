@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import { Heart, Search, ListPlus, X } from "lucide-react";
@@ -42,6 +42,7 @@ export default function CharacterSearch() {
   } | null>(null);
   const [characterListCounts, setCharacterListCounts] = useState<Map<string, number>>(new Map());
   const supabase = useMemo(() => createClient(), []);
+  const topRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -86,6 +87,16 @@ export default function CharacterSearch() {
     loadFavorites();
     refreshListCounts();
   }, [user, supabase, refreshListCounts]);
+
+  useEffect(() => {
+    // Use setTimeout to ensure scroll happens after React finishes rendering
+    const timer = setTimeout(() => {
+      topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [page]);
 
   useEffect(() => {
     async function loadCatalogue() {
@@ -217,7 +228,7 @@ export default function CharacterSearch() {
   }
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto px-4">
+    <div ref={topRef} className="space-y-8 max-w-5xl mx-auto px-4">
 
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>

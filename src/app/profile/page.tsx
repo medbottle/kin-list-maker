@@ -12,6 +12,7 @@ import { ProfileEditModal } from "@/components/profile-edit-modal";
 import { CreateListModal } from "@/components/create-list-modal";
 import { AddToListModal } from "@/components/add-to-list-modal";
 import { DeleteListModal } from "@/components/delete-list-modal";
+import { RemoveFavoriteModal } from "@/components/remove-favorite-modal";
 import { extractProfileData, type ProfileData } from "@/lib/profile-utils";
 
 type FavoriteCharacter = {
@@ -54,6 +55,11 @@ export default function ProfilePage() {
   const [isCreateListModalOpen, setIsCreateListModalOpen] = useState(false);
   const [isAddToListModalOpen, setIsAddToListModalOpen] = useState(false);
   const [isDeleteListModalOpen, setIsDeleteListModalOpen] = useState(false);
+  const [isRemoveFavoriteModalOpen, setIsRemoveFavoriteModalOpen] = useState(false);
+  const [favoriteToRemove, setFavoriteToRemove] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [listToDelete, setListToDelete] = useState<{
     id: string;
     name: string;
@@ -400,6 +406,11 @@ export default function ProfilePage() {
     setIsDeleteListModalOpen(true);
   }
 
+  function handleRemoveFavoriteClick(favoriteId: string, characterName: string) {
+    setFavoriteToRemove({ id: favoriteId, name: characterName });
+    setIsRemoveFavoriteModalOpen(true);
+  }
+
   function handleListNameClick(listId: string) {
     router.push(`/profile/lists/${listId}`);
   }
@@ -534,11 +545,14 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        <Link href="/" className="inline-block">
-          <button className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-        </Link>
+        <button
+          onClick={() => router.back()}
+          className="fixed top-24 left-8"
+          title="Go back"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="h-10 w-10 transition-transform duration-200 hover:scale-110" />
+        </button>
 
         <div className="space-y-6">
           <div className="flex items-start justify-between">
@@ -649,7 +663,7 @@ export default function ProfilePage() {
                     style={{ width: '180px' }}
                   >
                     <button
-                      onClick={() => removeFavorite(fav.id)}
+                      onClick={() => handleRemoveFavoriteClick(fav.id, fav.character_name)}
                       className="absolute top-2 right-2 z-10 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
                       title="Remove from favorites"
                     >
@@ -885,6 +899,22 @@ export default function ProfilePage() {
                 }
               }}
               listName={listToDelete.name}
+            />
+          )}
+
+          {favoriteToRemove && (
+            <RemoveFavoriteModal
+              isOpen={isRemoveFavoriteModalOpen}
+              onClose={() => {
+                setIsRemoveFavoriteModalOpen(false);
+                setFavoriteToRemove(null);
+              }}
+              onConfirm={() => {
+                if (favoriteToRemove) {
+                  removeFavorite(favoriteToRemove.id);
+                }
+              }}
+              characterName={favoriteToRemove.name}
             />
           )}
 
