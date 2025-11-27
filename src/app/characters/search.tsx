@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
-import { Heart, Search, ListPlus } from "lucide-react";
+import { Heart, Search, ListPlus, X } from "lucide-react";
 import { AddToListModal } from "@/components/add-to-list-modal";
 import PaginationControls from "./components/pagination";
 
@@ -405,25 +405,34 @@ export default function CharacterSearch() {
               <h2 className="text-lg font-semibold">Search Characters</h2>
               <button
                 onClick={() => setIsSearchOpen(false)}
-                className="text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                className="p-2 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                title="Close"
               >
-                Close
+                <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-3">
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search for a character by name"
-                className="border border-gray-300 dark:border-gray-700 p-2 w-full rounded bg-white dark:bg-gray-800 text-sm"
-              />
-              <button
-                onClick={searchCharactersInDb}
-                className="w-full bg-purple-600 text-white px-3 py-2 rounded text-sm font-medium hover:bg-purple-700 transition-colors"
-              >
-                Search
-              </button>
+              <div className="flex gap-2">
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search for a character by name"
+                  className="flex-1 border border-gray-300 dark:border-gray-700 p-2 rounded bg-white dark:bg-gray-800 text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      searchCharactersInDb();
+                    }
+                  }}
+                />
+                <button
+                  onClick={searchCharactersInDb}
+                  className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  title="Search"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3 max-h-80 overflow-y-auto">
