@@ -4,14 +4,8 @@ export async function getGeolocation(): Promise<{
   error?: string;
 }> {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error("Supabase URL or Anon Key not configured");
-      return { country: null, countryCode: null, error: "Configuration missing" };
-    }
-
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const response = await fetch(`${supabaseUrl}/functions/v1/geolocation`, {
       method: "GET",
       headers: {
