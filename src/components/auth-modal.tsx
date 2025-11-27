@@ -55,10 +55,22 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
         } else if (data.user) {
           const userNumber = generateUserNumber(data.user.id);
           
+          let location = null;
+          try {
+            const geoResponse = await fetch("/api/geolocation");
+            const geoData = await geoResponse.json();
+            if (geoData.country) {
+              location = geoData.country;
+            }
+          } catch (error) {
+            console.error("Error fetching location:", error);
+          }
+          
           await supabase.auth.updateUser({
             data: {
               display_name: displayName.trim() || null,
               user_number: userNumber,
+              location: location,
             },
           });
 
