@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, X, Edit2, Plus, UserPlus } from "lucide-react";
+import { ArrowLeft, X, Edit2, Plus, UserPlus, Star, List } from "lucide-react";
 import Image from "next/image";
 import { ProfileEditModal } from "@/components/profile-edit-modal";
 import { CreateListModal } from "@/components/create-list-modal";
@@ -496,7 +496,8 @@ export default function ProfilePage() {
 
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Star className="h-6 w-6" />
                 Favorite Characters
                 {favorites.length > 0 && (
                   <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">
@@ -567,7 +568,8 @@ export default function ProfilePage() {
 
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <List className="h-6 w-6" />
                 My Lists
                 {lists.length > 0 && (
                   <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">
