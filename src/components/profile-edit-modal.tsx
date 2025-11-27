@@ -101,7 +101,6 @@ export function ProfileEditModal({
           data: { publicUrl },
         } = supabase.storage.from("avatars").getPublicUrl(filePath);
         profilePictureUrl = publicUrl;
-        console.log("Profile picture uploaded:", publicUrl);
       }
 
       const {
