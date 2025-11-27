@@ -5,8 +5,9 @@ import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, X, Edit2, Plus, UserPlus, Star, List, Trash2, Users } from "lucide-react";
 import Image from "next/image";
+import Flag from "react-world-flags";
 import { ProfileEditModal } from "@/components/profile-edit-modal";
 import { CreateListModal } from "@/components/create-list-modal";
 import { AddToListModal } from "@/components/add-to-list-modal";
@@ -66,6 +67,8 @@ export default function ProfilePage() {
     gender: null,
     profilePicture: null,
     userNumber: null,
+    countryCode: null,
+    location: null,
   });
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -74,16 +77,125 @@ export default function ProfilePage() {
   useEffect(() => {
     if (hasCheckedAuth.current) return;
     
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        router.push("/");
-        return;
+    async function fetchAndUpdateLocation(userToSet: User): Promise<User> {
+      const needsLocation = !userToSet.user_metadata?.location;
+      const needsCountryCode = !userToSet.user_metadata?.country_code;
+      
+      if (!needsLocation && !needsCountryCode) {
+        return userToSet;
       }
-      setUser(session.user);
-      setProfileData(extractProfileData(session.user));
+      
+      try {
+        const geoResponse = await fetch("/api/geolocation");
+        const geoData = await geoResponse.json();
+        console.log("Geolocation data:", geoData);
+        
+        if (!geoData.country || !geoData.countryCode) {
+          return userToSet;
+        }
+        
+        const updatedMetadata = { ...userToSet.user_metadata };
+        if (needsLocation) updatedMetadata.location = geoData.country;
+        if (needsCountryCode) updatedMetadata.country_code = geoData.countryCode;
+        
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: updatedMetadata,
+        });
+        
+        if (updateError) {
+          console.error("Error updating user location/countryCode:", updateError);
+          return userToSet;
+        }
+        
+        await supabase.auth.refreshSession();
+        const { data: { user: updatedUser } } = await supabase.auth.getUser();
+        
+        if (updatedUser) {
+          console.log("Updated user metadata:", updatedUser.user_metadata);
+          console.log("Extracted profile data:", extractProfileData(updatedUser));
+          return updatedUser;
+        }
+        
+        return userToSet;
+      } catch (error) {
+        console.error("Error setting location:", error);
+        return userToSet;
+      }
+    }
+    
+    async function loadUserSession(): Promise<User | null> {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return null;
+      }
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const userToSet = currentUser || session.user;
+      if (userToSet) {
+        const needsLocation = !userToSet.user_metadata?.location;
+        const needsCountryCode = !userToSet.user_metadata?.country_code;
+        
+        if (needsLocation || needsCountryCode) {
+          try {
+            const geoResponse = await fetch("/api/geolocation");
+            const geoData = await geoResponse.json();
+            
+            if (geoData.country && geoData.countryCode) {
+              const updatedMetadata = {
+                ...userToSet.user_metadata,
+              };
+              
+              if (needsLocation) {
+                updatedMetadata.location = geoData.country;
+              }
+              
+              if (needsCountryCode) {
+                updatedMetadata.country_code = geoData.countryCode;
+              }
+              
+              const { error: updateError } = await supabase.auth.updateUser({
+                data: updatedMetadata,
+              });
+              
+              if (updateError) {
+                console.error("Error updating user location/countryCode:", updateError);
+              } else {
+                
+              }
+              
+              await supabase.auth.refreshSession();
+              const { data: { user: updatedUser } } = await supabase.auth.getUser();
+              if (updatedUser) {
+                console.log("Updated user metadata:", updatedUser.user_metadata);
+                console.log("Extracted profile data:", extractProfileData(updatedUser));
+                setUser(updatedUser);
+                setProfileData(extractProfileData(updatedUser));
+              } else {
+                setUser(userToSet);
+                setProfileData(extractProfileData(userToSet));
+              }
+            } else {
+              setUser(userToSet);
+              setProfileData(extractProfileData(userToSet));
+            }
+          } catch (error) {
+            console.error("Error setting location:", error);
+            setUser(userToSet);
+            setProfileData(extractProfileData(userToSet));
+          }
+        } else {
+          setUser(userToSet);
+          setProfileData(extractProfileData(userToSet));
+        }
+      }
+      
+      const finalUser = await fetchAndUpdateLocation(userToSet);
+      setUser(finalUser);
+      setProfileData(extractProfileData(finalUser));
       setLoading(false);
       hasCheckedAuth.current = true;
-    });
+    }
+    
+    loadUser();
 
     const {
       data: { subscription },
@@ -93,13 +205,29 @@ export default function ProfilePage() {
         return;
       }
       if (event === "USER_UPDATED" && session) {
-        setUser(session.user);
-        setProfileData(extractProfileData(session.user));
+        supabase.auth.getUser().then(({ data: { user: updatedUser } }) => {
+          if (updatedUser) {
+            setUser(updatedUser);
+            setProfileData(extractProfileData(updatedUser));
+          } else if (session.user) {
+            setUser(session.user);
+            setProfileData(extractProfileData(session.user));
+          }
+        });
       } else if (session && !hasCheckedAuth.current) {
-        setUser(session.user);
-        setProfileData(extractProfileData(session.user));
-        setLoading(false);
-        hasCheckedAuth.current = true;
+        async function loadUserForSession() {
+          const { data: { user: sessionUser } } = await supabase.auth.getUser();
+          if (sessionUser) {
+            setUser(sessionUser);
+            setProfileData(extractProfileData(sessionUser));
+          } else if (session?.user) {
+            setUser(session.user);
+            setProfileData(extractProfileData(session.user));
+          }
+          setLoading(false);
+          hasCheckedAuth.current = true;
+        }
+        loadUserForSession();
       }
     });
 
@@ -404,17 +532,19 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen p-8 bg-white dark:bg-black">
+    <main className="min-h-screen p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         <Link href="/" className="inline-block">
-          <ArrowLeft className="h-10 w-10 transition-transform duration-200 hover:scale-110" />
+          <button className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
         </Link>
 
         <div className="space-y-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               {profileData.profilePicture ? (
-                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700">
+                <div className="relative w-24 h-24 rounded-full overflow-hidden transition-transform duration-300 hover:scale-110 cursor-pointer">
                   <Image
                     src={profileData.profilePicture}
                     alt="Profile picture"
@@ -428,51 +558,76 @@ export default function ProfilePage() {
                   />
                 </div>
               ) : (
-                <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center transition-transform duration-300 hover:scale-110 cursor-pointer">
                   <span className="text-gray-400 text-2xl">👤</span>
                 </div>
               )}
               <div>
-                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                   {profileData.displayName || user.email}
                   {profileData.displayName && profileData.userNumber && (
-                    <span className="text-2xl text-gray-500 dark:text-gray-400 font-normal ml-2">
+                    <span className="text-2xl text-gray-500 dark:text-gray-400 font-normal">
                       #{profileData.userNumber}
                     </span>
                   )}
+                  {profileData.countryCode ? (
+                    <Flag 
+                      code={profileData.countryCode.toUpperCase()} 
+                      style={{ width: "24px", height: "18px" }}
+                      className="inline-block"
+                      title={profileData.location || ""}
+                    />
+                  ) : null}
                 </h1>
-                <div className="space-y-2">
-                  <p className="text-lg text-gray-600 dark:text-gray-400">
-                    <span className="font-semibold">Email:</span> {user.email}
+                
+                {profileData.gender && profileData.gender.trim() !== "" && (
+                  <p className="text-sm text-gray-500 dark:text-gray-500">
+                    <span className="font-semibold">Gender:</span>{" "}
+                    {profileData.gender.charAt(0).toUpperCase() +
+                      profileData.gender.slice(1).replace(/-/g, " ")}
                   </p>
-                  {profileData.gender && profileData.gender.trim() !== "" && (
-                    <p className="text-sm text-gray-500 dark:text-gray-500">
-                      <span className="font-semibold">Gender:</span>{" "}
-                      {profileData.gender.charAt(0).toUpperCase() +
-                        profileData.gender.slice(1).replace(/-/g, " ")}
-                    </p>
-                  )}
-                </div>
+                )}
+                <p className="text-sm text-gray-500 dark:text-gray-500">
+                  <span className="font-semibold">Joined:</span>{" "}
+                  {user.created_at
+                    ? new Date(user.created_at).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
+                    : "Loading..."}
+                </p>
               </div>
             </div>
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+              className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              title="Edit Profile"
             >
-              Edit Profile
+              <Edit2 className="h-5 w-5" />
             </button>
           </div>
 
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Star className="h-6 w-6" />
                 Favorite Characters
+              </h2>
+              <div className="flex items-center">
                 {favorites.length > 0 && (
-                  <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">
+                  <span className="text-sm text-gray-500 dark:text-gray-400 mr-3">
                     ({favorites.length}/5)
                   </span>
                 )}
-              </h2>
+                <Link
+                  href="/characters"
+                  className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  title="Go to character catalogue"
+                >
+                  <UserPlus className="h-5 w-5" />
+                </Link>
+              </div>
             </div>
 
             {favoritesLoading ? (
@@ -482,14 +637,7 @@ export default function ProfilePage() {
             ) : favorites.length === 0 ? (
               <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-8 text-center">
                 <p className="text-gray-600 dark:text-gray-400">
-                  No favorite characters yet. Start adding some from the{" "}
-                  <Link
-                    href="/characters"
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    characters page
-                  </Link>
-                  !
+                  No favorite characters yet.
                 </p>
               </div>
             ) : (
@@ -536,26 +684,27 @@ export default function ProfilePage() {
 
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <List className="h-6 w-6" />
                 My Lists
+              </h2>
+              <div className="flex items-center">
                 {lists.length > 0 && (
-                  <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">
+                  <span className="text-sm text-gray-500 dark:text-gray-400 mr-3">
                     ({lists.length}/3)
                   </span>
                 )}
-              </h2>
-              <div className="flex gap-3">
                 <button
                   onClick={() => setIsCreateListModalOpen(true)}
                   disabled={lists.length >= 3}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   title={
                     lists.length >= 3
                       ? "You can only have 3 lists. Delete one first."
                       : "Create a new list"
                   }
                 >
-                  Create List
+                  <Plus className="h-5 w-5" />
                 </button>
               </div>
             </div>
@@ -566,15 +715,9 @@ export default function ProfilePage() {
               </div>
             ) : lists.length === 0 ? (
               <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-8 text-center">
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                <p className="text-gray-600 dark:text-gray-400">
                   No lists created yet.
                 </p>
-                <button
-                  onClick={() => setIsCreateListModalOpen(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
-                >
-                  Create Your First List
-                </button>
               </div>
             ) : (
               <div className="flex justify-center flex-wrap gap-6">
@@ -594,7 +737,8 @@ export default function ProfilePage() {
                         >
                           {list.name}
                         </h3>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap flex items-center gap-1">
+                          <Users className="h-4 w-4" />
                           ({list.character_count}/10)
                         </span>
                       </div>
@@ -643,27 +787,29 @@ export default function ProfilePage() {
                           Created: {new Date(list.created_at).toLocaleDateString()}
                         </span>
                         <div className="flex gap-2 flex-shrink-0">
-                          <Link
-                            href="/characters"
-                            className={`text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap ${
-                              list.character_count >= 10
-                                ? "opacity-50 cursor-not-allowed"
-                                : ""
-                            }`}
-                            title={
-                              list.character_count >= 10
-                                ? "List is full (10/10)"
-                                : "Go to characters page to add characters"
-                            }
-                          >
-                            Add Characters
-                          </Link>
+                          {list.character_count >= 10 ? (
+                            <button
+                              disabled
+                              className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                              title="List is full (10/10)"
+                            >
+                              <Plus className="h-5 w-5" />
+                            </button>
+                          ) : (
+                            <Link
+                              href="/characters"
+                              className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                              title="Go to characters page to add characters"
+                            >
+                              <Plus className="h-5 w-5" />
+                            </Link>
+                          )}
                           <button
                             onClick={() => handleDeleteClick(list.id, list.name)}
-                            className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 transition-colors whitespace-nowrap"
+                            className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                             title="Delete list"
                           >
-                            Delete List
+                            <Trash2 className="h-5 w-5 text-red-600 dark:text-red-500" />
                           </button>
                         </div>
                     </div>
@@ -683,12 +829,21 @@ export default function ProfilePage() {
         currentGender={profileData.gender}
         currentProfilePicture={profileData.profilePicture}
         onUpdate={async () => {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (session?.user) {
-            setUser(session.user);
-            setProfileData(extractProfileData(session.user));
+          // Wait a bit for the session to refresh
+          await new Promise(resolve => setTimeout(resolve, 100));
+          const { data: { user: updatedUser } } = await supabase.auth.getUser();
+          if (updatedUser) {
+            setUser(updatedUser);
+            setProfileData(extractProfileData(updatedUser));
+          } else {
+            // Fallback to session if getUser fails
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+            if (session?.user) {
+              setUser(session.user);
+              setProfileData(extractProfileData(session.user));
+            }
           }
         }}
       />

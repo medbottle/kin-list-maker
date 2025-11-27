@@ -55,22 +55,43 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
         } else if (data.user) {
           const userNumber = generateUserNumber(data.user.id);
           
-          await supabase.auth.updateUser({
+          let location = null;
+          let countryCode = null;
+          try {
+            const geoResponse = await fetch("/api/geolocation");
+            const geoData = await geoResponse.json();
+            if (geoData.country) {
+              location = geoData.country;
+              countryCode = geoData.countryCode;
+            }
+          } catch (error) {
+            console.error("Error fetching location:", error);
+          }
+          
+          const { error: updateError } = await supabase.auth.updateUser({
             data: {
               display_name: displayName.trim() || null,
               user_number: userNumber,
+              location: location,
+              country_code: countryCode,
             },
           });
 
-          setError(null);
-          alert("Account created! Please log in.");
+          if (updateError) {
+            console.error("Failed to update user metadata:", updateError);
+            setError("Account created but failed to save profile information. Please try updating your profile after logging in.");
+          } else {
+            setError(null);
+            alert("Account created! Please log in.");
+          }
+          
           setMode("login");
           setEmail("");
           setPassword("");
           setDisplayName("");
         }
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);

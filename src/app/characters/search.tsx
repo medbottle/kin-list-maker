@@ -1,12 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
-import { Heart } from "lucide-react";
+import { Heart, Search, ListPlus, X } from "lucide-react";
 import { AddToListModal } from "@/components/add-to-list-modal";
 import PaginationControls from "./components/pagination";
+import { loadCharacterListCounts } from "@/lib/list-counts";
 
 type CharacterResult = {
   id: string;
@@ -39,6 +40,7 @@ export default function CharacterSearch() {
     id: string;
     name: string;
   } | null>(null);
+  const [characterListCounts, setCharacterListCounts] = useState<Map<string, number>>(new Map());
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
@@ -55,10 +57,17 @@ export default function CharacterSearch() {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
+  const refreshListCounts = useCallback(async () => {
+    if (!user) return;
+    const counts = await loadCharacterListCounts(supabase);
+    setCharacterListCounts(counts);
+  }, [user, supabase]);
+
   useEffect(() => {
     if (!user) {
       setFavoriteIds(new Set());
       setFavoriteCount(0);
+      setCharacterListCounts(new Map());
       return;
     }
 
@@ -75,7 +84,8 @@ export default function CharacterSearch() {
     }
 
     loadFavorites();
-  }, [user, supabase]);
+    refreshListCounts();
+  }, [user, supabase, refreshListCounts]);
 
   useEffect(() => {
     async function loadCatalogue() {
@@ -220,9 +230,10 @@ export default function CharacterSearch() {
         <div className="flex gap-3">
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 transition-colors"
-          >
-            Search
+            className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Search characters"
+            >
+            <Search className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -295,6 +306,8 @@ export default function CharacterSearch() {
             {catalogue.map((c, index) => {
               const isFavorited = favoriteIds.has(c.id);
               const canAddFavorite = user && favoriteCount < 5;
+              const listCount = characterListCounts.get(c.id) || 0;
+              const isInList = listCount > 0;
               return (
                 <div
                   key={`${c.name}-${index}`}
@@ -329,7 +342,7 @@ export default function CharacterSearch() {
                         <button
                           onClick={() => toggleFavorite(c.id, c.name)}
                           disabled={isAddingFavorite || (!isFavorited && !canAddFavorite)}
-                          className={`p-2 rounded-full transition-colors ${
+                          className={`p-2 rounded-full transition-all duration-300 hover:scale-110 ${
                             isFavorited
                               ? "bg-red-500 text-white hover:bg-red-600"
                               : canAddFavorite
@@ -345,7 +358,7 @@ export default function CharacterSearch() {
                           }
                         >
                           <Heart
-                            className={`h-4 w-4 ${isFavorited ? "fill-current" : ""}`}
+                            className={`h-4 w-4 transition-all duration-300 ${isFavorited ? "fill-current" : ""}`}
                           />
                         </button>
                         <button
@@ -353,9 +366,19 @@ export default function CharacterSearch() {
                             setSelectedCharacterForList({ id: c.id, name: c.name });
                             setIsAddToListModalOpen(true);
                           }}
-                          className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 transition-colors"
+                          className={`p-2 rounded-full transition-all duration-300 hover:scale-110 relative ${
+                            isInList
+                              ? "bg-blue-600 text-white hover:bg-blue-700"
+                              : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                          }`}
+                          title={isInList ? `In ${listCount} list${listCount > 1 ? "s" : ""}` : "Add to list"}
                         >
-                          Add to List
+                          <ListPlus className="h-4 w-4" />
+                          {isInList && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                              {listCount}
+                            </span>
+                          )}
                         </button>
                       </div>
                     )}
@@ -373,25 +396,36 @@ export default function CharacterSearch() {
               <h2 className="text-lg font-semibold">Search Characters</h2>
               <button
                 onClick={() => setIsSearchOpen(false)}
-                className="text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                className="p-2 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                title="Close"
+                aria-label="Close"
               >
-                Close
+                <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-3">
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search for a character by name"
-                className="border border-gray-300 dark:border-gray-700 p-2 w-full rounded bg-white dark:bg-gray-800 text-sm"
-              />
-              <button
-                onClick={searchCharactersInDb}
-                className="w-full bg-purple-600 text-white px-3 py-2 rounded text-sm font-medium hover:bg-purple-700 transition-colors"
-              >
-                Search
-              </button>
+              <div className="flex gap-2">
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search for a character by name"
+                  className="flex-1 border border-gray-300 dark:border-gray-700 p-2 rounded bg-white dark:bg-gray-800 text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      searchCharactersInDb();
+                    }
+                  }}
+                />
+                <button
+                  onClick={searchCharactersInDb}
+                  className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  title="Search"
+                  aria-label="Search"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3 max-h-80 overflow-y-auto">
@@ -405,6 +439,8 @@ export default function CharacterSearch() {
                 if (!c.id) return null;
                 const isFavorited = favoriteIds.has(c.id);
                 const canAddFavorite = user && favoriteCount < 5;
+                const listCount = characterListCounts.get(c.id) || 0;
+                const isInList = listCount > 0;
                 return (
                   <div
                     key={c.id ?? c.name}
@@ -440,7 +476,7 @@ export default function CharacterSearch() {
                         <button
                           onClick={() => toggleFavorite(c.id!, c.name)}
                           disabled={isAddingFavorite || (!isFavorited && !canAddFavorite)}
-                          className={`p-1.5 rounded-full transition-colors ${
+                          className={`p-1.5 rounded-full transition-all duration-300 hover:scale-110 ${
                             isFavorited
                               ? "bg-red-500 text-white hover:bg-red-600"
                               : canAddFavorite
@@ -456,7 +492,7 @@ export default function CharacterSearch() {
                           }
                         >
                           <Heart
-                            className={`h-3 w-3 ${isFavorited ? "fill-current" : ""}`}
+                            className={`h-3 w-3 transition-all duration-300 ${isFavorited ? "fill-current" : ""}`}
                           />
                         </button>
                         <button
@@ -464,9 +500,19 @@ export default function CharacterSearch() {
                             setSelectedCharacterForList({ id: c.id!, name: c.name });
                             setIsAddToListModalOpen(true);
                           }}
-                          className="text-xs bg-blue-600 text-white px-2 py-1 rounded-md hover:bg-blue-700 transition-colors"
+                          className={`p-1.5 rounded-full transition-all duration-300 hover:scale-110 relative ${
+                            isInList
+                              ? "bg-blue-600 text-white hover:bg-blue-700"
+                              : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                          }`}
+                          title={isInList ? `In ${listCount} list${listCount > 1 ? "s" : ""}` : "Add to list"}
                         >
-                          Add to List
+                          <ListPlus className="h-3 w-3" />
+                          {isInList && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full h-3.5 w-3.5 flex items-center justify-center">
+                              {listCount}
+                            </span>
+                          )}
                         </button>
                       </div>
                     )}
@@ -485,9 +531,7 @@ export default function CharacterSearch() {
             setIsAddToListModalOpen(false);
             setSelectedCharacterForList(null);
           }}
-          onSuccess={() => {
-            // Refresh favorite status if needed
-          }}
+          onSuccess={refreshListCounts}
           user={user}
           characterId={selectedCharacterForList.id}
           characterName={selectedCharacterForList.name}
