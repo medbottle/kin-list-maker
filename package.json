@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "sync:anilist": "node scripts/sync-anilist-characters.mjs"
+    "sync:anilist": "node scripts/sync-anilist-characters.mjs",
+    "sync:tmdb": "node scripts/sync-tmdb-characters.mjs",
+    "sync:rawg": "node scripts/sync-rawg-characters.mjs",
+    "sync:all": "node scripts/sync-anilist-characters.mjs && node scripts/sync-tmdb-characters.mjs && node scripts/sync-rawg-characters.mjs"
   },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.10.0",
