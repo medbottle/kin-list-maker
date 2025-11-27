@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
+import { ProfileEditModal } from "@/components/profile-edit-modal";
 
 type FavoriteCharacter = {
   id: string;
@@ -32,7 +33,13 @@ export default function ProfilePage() {
   const [lists, setLists] = useState<UserList[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(true);
   const [listsLoading, setListsLoading] = useState(true);
-  const supabase = createClient();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [profileData, setProfileData] = useState({
+    displayName: null as string | null,
+    gender: null as string | null,
+    profilePicture: null as string | null,
+  });
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const hasCheckedAuth = useRef(false);
 
@@ -45,6 +52,13 @@ export default function ProfilePage() {
         return;
       }
       setUser(session.user);
+      if (session.user.user_metadata) {
+        setProfileData({
+          displayName: session.user.user_metadata.display_name || null,
+          gender: session.user.user_metadata.gender || null,
+          profilePicture: session.user.user_metadata.profile_picture || null,
+        });
+      }
       setLoading(false);
       hasCheckedAuth.current = true;
     });
@@ -56,15 +70,32 @@ export default function ProfilePage() {
         router.push("/");
         return;
       }
-      if (session && !hasCheckedAuth.current) {
+      if (event === "USER_UPDATED" && session) {
         setUser(session.user);
+        if (session.user.user_metadata) {
+          setProfileData({
+            displayName: session.user.user_metadata.display_name || null,
+            gender: session.user.user_metadata.gender || null,
+            profilePicture: session.user.user_metadata.profile_picture || null,
+          });
+        }
+      } else if (session && !hasCheckedAuth.current) {
+        setUser(session.user);
+        if (session.user.user_metadata) {
+          setProfileData({
+            displayName: session.user.user_metadata.display_name || null,
+            gender: session.user.user_metadata.gender || null,
+            profilePicture: session.user.user_metadata.profile_picture || null,
+          });
+        }
         setLoading(false);
         hasCheckedAuth.current = true;
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase.auth, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -148,18 +179,51 @@ export default function ProfilePage() {
         </Link>
 
         <div className="space-y-6">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-              My Profile
-            </h1>
-            <div className="space-y-2">
-              <p className="text-lg text-gray-600 dark:text-gray-400">
-                <span className="font-semibold">Email:</span> {user.email}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-500">
-                User ID: {user.id}
-              </p>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-4">
+              {profileData.profilePicture ? (
+                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700">
+                  <Image
+                    src={profileData.profilePicture}
+                    alt="Profile picture"
+                    fill
+                    className="object-cover"
+                    unoptimized
+                    onError={(e) => {
+                      console.error("Image load error:", profileData.profilePicture);
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                  <span className="text-gray-400 text-2xl">👤</span>
+                </div>
+              )}
+              <div>
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                  {profileData.displayName || user.email}
+                </h1>
+                <div className="space-y-2">
+                  <p className="text-lg text-gray-600 dark:text-gray-400">
+                    <span className="font-semibold">Email:</span> {user.email}
+                  </p>
+                  {profileData.gender && profileData.gender.trim() !== "" && (
+                    <p className="text-sm text-gray-500 dark:text-gray-500">
+                      <span className="font-semibold">Gender:</span>{" "}
+                      {profileData.gender.charAt(0).toUpperCase() +
+                        profileData.gender.slice(1).replace(/-/g, " ")}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+            >
+              Edit Profile
+            </button>
           </div>
 
           <section className="space-y-4">
@@ -167,12 +231,6 @@ export default function ProfilePage() {
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
                 Favorite Characters
               </h2>
-              <Link
-                href="/characters"
-                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Browse Characters →
-              </Link>
             </div>
 
             {favoritesLoading ? (
@@ -231,9 +289,6 @@ export default function ProfilePage() {
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
                 My Lists
               </h2>
-              <button className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                Create New List +
-              </button>
             </div>
 
             {listsLoading ? (
@@ -279,6 +334,28 @@ export default function ProfilePage() {
           </section>
         </div>
       </div>
+
+      <ProfileEditModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        currentDisplayName={profileData.displayName}
+        currentGender={profileData.gender}
+        currentProfilePicture={profileData.profilePicture}
+        onUpdate={async () => {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (session?.user) {
+            setUser(session.user);
+            const metadata = session.user.user_metadata || {};
+            setProfileData({
+              displayName: metadata.display_name || null,
+              gender: metadata.gender || null,
+              profilePicture: metadata.profile_picture || null,
+            });
+          }
+        }}
+      />
     </main>
   );
 }
