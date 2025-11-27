@@ -14,6 +14,7 @@ import { AddToListModal } from "@/components/add-to-list-modal";
 import { DeleteListModal } from "@/components/delete-list-modal";
 import { RemoveFavoriteModal } from "@/components/remove-favorite-modal";
 import { extractProfileData, type ProfileData } from "@/lib/profile-utils";
+import { getGeolocation } from "@/lib/geolocation";
 
 type FavoriteCharacter = {
   id: string;
@@ -98,12 +99,8 @@ export default function ProfilePage() {
       }
       
       try {
-        const geoResponse = await fetch("/api/geolocation");
-        if (!geoResponse.ok) {
-          console.warn("Geolocation API returned error:", geoResponse.status);
-          return userToSet;
-        }
-        const geoData = await geoResponse.json();
+        // Get location from Supabase Edge Function (uses built-in geo headers)
+        const geoData = await getGeolocation();
         console.log("Geolocation data:", geoData);
         
         if (!geoData.country || !geoData.countryCode) {

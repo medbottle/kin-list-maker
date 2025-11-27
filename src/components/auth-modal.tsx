@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase-client";
 import { generateUserNumber } from "@/lib/user-number";
+import { getGeolocation } from "@/lib/geolocation";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -55,18 +56,14 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
         } else if (data.user) {
           const userNumber = generateUserNumber(data.user.id);
           
+          // Get location from Supabase Edge Function (uses built-in geo headers)
           let location = null;
           let countryCode = null;
           try {
-            const geoResponse = await fetch("/api/geolocation");
-            if (geoResponse.ok) {
-              const geoData = await geoResponse.json();
-              if (geoData.country && geoData.countryCode) {
-                location = geoData.country;
-                countryCode = geoData.countryCode;
-              }
-            } else {
-              console.warn("Geolocation API returned error:", geoResponse.status);
+            const geoData = await getGeolocation();
+            if (geoData.country && geoData.countryCode) {
+              location = geoData.country;
+              countryCode = geoData.countryCode;
             }
           } catch (error) {
             console.error("Error fetching location:", error);
