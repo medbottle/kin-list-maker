@@ -1,14 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import { AuthStatus } from "@/components/auth-status";
 import { User as UserIcon, Users, UserSearch } from "lucide-react";
 
+type CharacterCard = {
+  id: string;
+  name: string;
+  image: string | null;
+  media: string;
+};
+
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
+  const [featuredCharacters, setFeaturedCharacters] = useState<CharacterCard[]>([]);
+  const [isLoadingCharacters, setIsLoadingCharacters] = useState(true);
   const supabase = createClient();
 
   useEffect(() => {
@@ -25,6 +35,42 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, [supabase.auth]);
 
+  useEffect(() => {
+    async function loadFeaturedCharacters() {
+      setIsLoadingCharacters(true);
+      try {
+        const { data, error } = await supabase
+          .from("characters")
+          .select("id, name, image, media")
+          .not("image", "is", null)
+          .limit(100);
+
+        if (error) {
+          console.error("Error loading featured characters:", error);
+          setIsLoadingCharacters(false);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          const shuffled = [...data].sort(() => Math.random() - 0.5);
+          const selected = shuffled.slice(0, 3).map((char) => ({
+            id: char.id,
+            name: char.name,
+            image: char.image,
+            media: char.media,
+          }));
+          setFeaturedCharacters(selected);
+        }
+      } catch (error) {
+        console.error("Error fetching featured characters:", error);
+      } finally {
+        setIsLoadingCharacters(false);
+      }
+    }
+
+    loadFeaturedCharacters();
+  }, [supabase]);
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12 bg-white dark:bg-black relative">
       <div className="fixed top-4 right-4 z-10">
@@ -32,6 +78,41 @@ export default function Home() {
       </div>
 
       <div className="max-w-3xl w-full space-y-8">
+        {!isLoadingCharacters && featuredCharacters.length > 0 && (
+          <div className="flex justify-center gap-4 mb-8">
+            {featuredCharacters.map((character, index) => (
+              <div
+                key={character.id}
+                className="relative w-24 h-32 md:w-32 md:h-40 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 shadow-lg transition-all duration-500 hover:scale-110"
+                style={{
+                  animation: `fadeInUp 0.6s ease-out ${index * 0.2}s both, float 3s ease-in-out ${index * 0.3}s infinite`,
+                }}
+              >
+                {character.image && (
+                  <Image
+                    src={character.image}
+                    alt={character.name}
+                    fill
+                    sizes="(min-width: 768px) 128px, 96px"
+                    className="object-cover"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-2">
+                  <p className="text-white text-xs font-medium truncate drop-shadow-lg">
+                    {character.name}
+                  </p>
+                  {character.media && (
+                    <p className="text-white/80 text-[10px] truncate drop-shadow-lg">
+                      {character.media}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="text-center space-y-6">
           <h1 className="text-6xl md:text-7xl font-light text-gray-900 dark:text-white tracking-tight">
             Kin List Maker
