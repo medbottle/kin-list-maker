@@ -74,6 +74,7 @@ export function ProfileEditModal({
           await supabase.storage.from("avatars").remove([filePath]);
         } catch (error) {
           console.error("Error deleting old picture:", error);
+          alert("Failed to delete old profile picture. Please try again later.");
         }
         profilePictureUrl = null;
       }
