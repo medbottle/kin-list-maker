@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, X, Edit2, Plus } from "lucide-react";
 import Image from "next/image";
 import { ProfileEditModal } from "@/components/profile-edit-modal";
 import { CreateListModal } from "@/components/create-list-modal";
@@ -452,9 +452,10 @@ export default function ProfilePage() {
             </div>
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+              className="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 transition-colors"
+              title="Edit Profile"
             >
-              Edit Profile
+              <Edit2 className="h-5 w-5" />
             </button>
           </div>
 
@@ -543,14 +544,14 @@ export default function ProfilePage() {
                 <button
                   onClick={() => setIsCreateListModalOpen(true)}
                   disabled={lists.length >= 3}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  className="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   title={
                     lists.length >= 3
                       ? "You can only have 3 lists. Delete one first."
                       : "Create a new list"
                   }
                 >
-                  Create List
+                  <Plus className="h-5 w-5" />
                 </button>
               </div>
             </div>
@@ -561,15 +562,9 @@ export default function ProfilePage() {
               </div>
             ) : lists.length === 0 ? (
               <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-8 text-center">
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                <p className="text-gray-600 dark:text-gray-400">
                   No lists created yet.
                 </p>
-                <button
-                  onClick={() => setIsCreateListModalOpen(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
-                >
-                  Create Your First List
-                </button>
               </div>
             ) : (
               <div className="flex justify-center flex-wrap gap-6">
