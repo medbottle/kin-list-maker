@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createClient } from "@/lib/supabase-client";
 import Image from "next/image";
+import { Upload, Trash2, X } from "lucide-react";
 
 interface ProfileEditModalProps {
   isOpen: boolean;
@@ -122,14 +123,11 @@ export function ProfileEditModal({
         return;
       }
 
+      // Refresh session to ensure metadata is updated
       await supabase.auth.refreshSession();
       
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-      }
+      // Wait a moment for the refresh to propagate
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       onUpdate();
       onClose();
@@ -168,9 +166,10 @@ export function ProfileEditModal({
           </h2>
           <button
             onClick={handleClose}
-            className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+            className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            title="Close"
           >
-            ✕
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -192,7 +191,7 @@ export function ProfileEditModal({
                 </div>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex mt-2 gap-2 items-center justify-center">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -203,17 +202,19 @@ export function ProfileEditModal({
               />
               <label
                 htmlFor="profile-picture-input"
-                className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+                className="cursor-pointer p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center justify-center"
+                title={profilePicture ? "Change Picture" : "Upload Picture"}
               >
-                {profilePicture ? "Change Picture" : "Upload Picture"}
+                <Upload className="h-5 w-5" />
               </label>
               {(currentProfilePicture || previewUrl) && (
                 <button
                   type="button"
                   onClick={handleRemovePicture}
-                  className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm"
+                  className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center justify-center ml-1"
+                  title="Remove Picture"
                 >
-                  Remove Picture
+                  <Trash2 className="h-5 w-5 text-red-600 dark:text-red-500" />
                 </button>
               )}
             </div>
@@ -261,14 +262,14 @@ export function ProfileEditModal({
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md text-sm"
+              className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {loading ? "Saving..." : "Save"}
             </button>
