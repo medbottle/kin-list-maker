@@ -164,17 +164,15 @@ export default function CharacterSearch() {
       setCatalogueLoading(true);
       setCatalogueError(null);
       try {
-        let queryBuilder = supabase
-          .from("characters")
-          .select("id, name, image, media, source_api");
+        const mediaFilter = catalogueMediaFilter && catalogueMediaFilter !== "all" 
+          ? catalogueMediaFilter 
+          : null;
 
-        if (catalogueMediaFilter && catalogueMediaFilter !== "all") {
-          queryBuilder = queryBuilder.eq("media", catalogueMediaFilter);
-        }
-
-        const { data, error } = await queryBuilder
-          .order("name")
-          .range((page - 1) * pageSize, page * pageSize - 1);
+        const { data, error } = await supabase.rpc("get_characters_sorted", {
+          p_media_filter: mediaFilter,
+          p_limit: pageSize,
+          p_offset: (page - 1) * pageSize,
+        });
 
         if (error) {
           console.error("Error loading catalogue:", error);
@@ -540,14 +538,14 @@ export default function CharacterSearch() {
                       />
                     </div>
                   )}
-                    <div className="flex-1 space-y-1">
-                      <div className="font-semibold">{c.name}</div>
-                      {c.mediaTitle && (
-                        <div className="text-xs text-gray-600 dark:text-gray-400">
-                          {c.mediaTitle}
-                        </div>
-                      )}
-                    </div>
+                     <div className="flex-1 space-y-1">
+                       <div className="font-semibold">{c.name.replace(/["']/g, "")}</div>
+                       {c.mediaTitle && (
+                         <div className="text-xs text-gray-600 dark:text-gray-400">
+                           {c.mediaTitle}
+                         </div>
+                       )}
+                     </div>
                     {user && (
                       <div className="flex items-center gap-2">
                         <button
