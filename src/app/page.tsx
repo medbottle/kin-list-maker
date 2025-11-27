@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import { AuthStatus } from "@/components/auth-status";
+import { User as UserIcon, Users } from "lucide-react";
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -37,11 +38,11 @@ export default function Home() {
           </h1>
 
           <p className="text-xl md:text-2xl text-gray-500 dark:text-gray-400 font-light max-w-xl mx-auto">
-            an easy and simple way of showcasing your kin list
+            an easy and simple way of managing your kin list
           </p>
         </div>
 
-        <div className="flex justify-center gap-4">
+        <div className="flex justify-center items-center gap-4">
           <Link
             href={user ? "/profile" : "#"}
             onClick={(e) => {
@@ -49,19 +50,22 @@ export default function Home() {
                 e.preventDefault();
               }
             }}
-            className={`px-4 py-2 rounded-md ${
+            className={`flex flex-col items-center gap-2 p-4 transition-all duration-300 ${
               user
-                ? "bg-blue-600 text-white hover:bg-blue-700"
-                : "bg-gray-400 text-gray-200 cursor-not-allowed opacity-50"
+                ? "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer hover:scale-110"
+                : "text-gray-400 cursor-not-allowed opacity-50"
             }`}
           >
-            My profile
+            <UserIcon className="h-12 w-12" />
+            <span className="text-sm font-medium tracking-wide">My profile</span>
           </Link>
+          <div className="h-16 w-px bg-gray-300 dark:bg-gray-700"></div>
           <Link
             href="/characters"
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            className="flex flex-col items-center gap-2 p-4 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all duration-300 cursor-pointer hover:scale-110"
           >
-            Characters
+            <Users className="h-12 w-12" />
+            <span className="text-sm font-medium tracking-wide">Characters</span>
           </Link>
         </div>
       </div>
