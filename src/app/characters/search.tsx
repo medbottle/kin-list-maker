@@ -326,7 +326,7 @@ export default function CharacterSearch() {
                         value={mediaSearchQuery}
                         onChange={(e) => setMediaSearchQuery(e.target.value)}
                         placeholder="Search media..."
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-500"
                         autoFocus
                         onClick={(e) => e.stopPropagation()}
                       />
@@ -342,7 +342,7 @@ export default function CharacterSearch() {
                         }}
                         className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
                           catalogueMediaFilter === "all"
-                            ? "bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-100"
+                            ? "bg-gray-200 dark:bg-gray-700 font-medium"
                             : ""
                         }`}
                       >
@@ -364,7 +364,7 @@ export default function CharacterSearch() {
                             }}
                             className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors truncate ${
                               catalogueMediaFilter === media
-                                ? "bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-100"
+                                ? "bg-gray-200 dark:bg-gray-700 font-medium"
                                 : ""
                             }`}
                           >
