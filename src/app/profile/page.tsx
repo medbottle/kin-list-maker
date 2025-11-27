@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, X, Edit2, Plus, UserPlus, Star, List, Trash2, Users } from "lucide-react";
 import Image from "next/image";
+import Flag from "react-world-flags";
 import { ProfileEditModal } from "@/components/profile-edit-modal";
 import { CreateListModal } from "@/components/create-list-modal";
 import { AddToListModal } from "@/components/add-to-list-modal";
@@ -67,6 +68,7 @@ export default function ProfilePage() {
     profilePicture: null,
     userNumber: null,
     location: null,
+    countryCode: null,
   });
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -84,28 +86,49 @@ export default function ProfilePage() {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       const userToSet = currentUser || session.user;
       if (userToSet) {
-        // Auto-set location if not already set
-        if (!userToSet.user_metadata?.location) {
+        // Auto-set location and countryCode if not already set
+        const needsLocation = !userToSet.user_metadata?.location;
+        const needsCountryCode = !userToSet.user_metadata?.country_code;
+        
+        if (needsLocation || needsCountryCode) {
           try {
             const geoResponse = await fetch("/api/geolocation");
             const geoData = await geoResponse.json();
             console.log("Geolocation data:", geoData);
-            if (geoData.country) {
-              const { error: updateError } = await supabase.auth.updateUser({
-                data: {
-                  ...userToSet.user_metadata,
-                  location: geoData.country,
-                },
-              });
-              if (updateError) {
-                console.error("Error updating user location:", updateError);
+            console.log("Country:", geoData.country, "CountryCode:", geoData.countryCode);
+            
+            if (geoData.country && geoData.countryCode) {
+              const updatedMetadata = {
+                ...userToSet.user_metadata,
+              };
+              
+              // Only update location if it's missing
+              if (needsLocation) {
+                updatedMetadata.location = geoData.country;
               }
+              
+              // Only update country_code if it's missing
+              if (needsCountryCode) {
+                updatedMetadata.country_code = geoData.countryCode;
+              }
+              
+              const { error: updateError } = await supabase.auth.updateUser({
+                data: updatedMetadata,
+              });
+              
+              if (updateError) {
+                console.error("Error updating user location/countryCode:", updateError);
+              } else {
+                console.log("Successfully saved - location:", updatedMetadata.location, "country_code:", updatedMetadata.country_code);
+              }
+              
               // Refresh session to get updated metadata
               await supabase.auth.refreshSession();
               // Get updated user data
               const { data: { user: updatedUser } } = await supabase.auth.getUser();
               if (updatedUser) {
                 console.log("Updated user metadata:", updatedUser.user_metadata);
+                console.log("Extracted profile data:", extractProfileData(updatedUser));
                 setUser(updatedUser);
                 setProfileData(extractProfileData(updatedUser));
               } else {
@@ -113,7 +136,7 @@ export default function ProfilePage() {
                 setProfileData(extractProfileData(userToSet));
               }
             } else {
-              console.log("No country data from geolocation API");
+              console.log("No country data from geolocation API - country:", geoData.country, "countryCode:", geoData.countryCode);
               setUser(userToSet);
               setProfileData(extractProfileData(userToSet));
             }
@@ -123,7 +146,7 @@ export default function ProfilePage() {
             setProfileData(extractProfileData(userToSet));
           }
         } else {
-          console.log("Location already set:", userToSet.user_metadata?.location);
+          console.log("Location already set:", userToSet.user_metadata?.location, "CountryCode:", userToSet.user_metadata?.country_code);
           setUser(userToSet);
           setProfileData(extractProfileData(userToSet));
         }
@@ -500,14 +523,25 @@ export default function ProfilePage() {
                 </div>
               )}
               <div>
-                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                   {profileData.displayName || user.email}
                   {profileData.displayName && profileData.userNumber && (
-                    <span className="text-2xl text-gray-500 dark:text-gray-400 font-normal ml-2">
+                    <span className="text-2xl text-gray-500 dark:text-gray-400 font-normal">
                       #{profileData.userNumber}
                     </span>
                   )}
+                  {profileData.countryCode ? (
+                    <Flag 
+                      code={profileData.countryCode.toUpperCase()} 
+                      style={{ width: "24px", height: "18px" }}
+                      className="inline-block"
+                      title={profileData.location || ""}
+                    />
+                  ) : (
+                    <span className="text-xs text-gray-400">(No flag - code: {profileData.countryCode || "null"})</span>
+                  )}
                 </h1>
+                
                 {profileData.gender && profileData.gender.trim() !== "" && (
                   <p className="text-sm text-gray-500 dark:text-gray-500">
                     <span className="font-semibold">Gender:</span>{" "}
