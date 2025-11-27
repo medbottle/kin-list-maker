@@ -85,7 +85,6 @@ export default function ProfilePage() {
     if (hasCheckedAuth.current) return;
     
     async function fetchAndUpdateLocation(userToSet: User): Promise<User> {
-      // If user already has a country code (flag), skip geolocation fetch to avoid rate limits
       if (userToSet.user_metadata?.country_code) {
         console.log("User already has country code, skipping geolocation fetch");
         return userToSet;
@@ -99,7 +98,6 @@ export default function ProfilePage() {
       }
       
       try {
-        // Get location from Supabase Edge Function (uses built-in geo headers)
         const geoData = await getGeolocation();
         console.log("Geolocation data:", geoData);
         

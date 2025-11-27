@@ -56,7 +56,6 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
         } else if (data.user) {
           const userNumber = generateUserNumber(data.user.id);
           
-          // Get location from Supabase Edge Function (uses built-in geo headers)
           let location = null;
           let countryCode = null;
           try {

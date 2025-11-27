@@ -1,7 +1,3 @@
-/**
- * Get user's location using Supabase Edge Function geo headers
- * This uses built-in geo headers, no external API calls needed
- */
 export async function getGeolocation(): Promise<{
   country: string | null;
   countryCode: string | null;

@@ -1,7 +1,3 @@
-// Supabase Edge Function for Geolocation using built-in geo headers
-// This function uses Supabase's geo headers to get the user's country
-
-// Country code to country name mapping
 const countryNames: Record<string, string> = {
   US: "United States", GB: "United Kingdom", CA: "Canada", AU: "Australia",
   BR: "Brazil", DE: "Germany", FR: "France", IT: "Italy", ES: "Spain",
@@ -20,7 +16,6 @@ function getCountryName(countryCode: string): string | null {
   if (countryNames[countryCode]) {
     return countryNames[countryCode];
   }
-  // Try to use Intl API for other countries
   try {
     const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
     return regionNames.of(countryCode) || null;
@@ -30,7 +25,6 @@ function getCountryName(countryCode: string): string | null {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       headers: {
@@ -42,8 +36,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Try multiple possible header names for country code
-    // Supabase Edge Functions may provide geo headers in different formats
     const countryCode = 
       req.headers.get("x-country") ||
       req.headers.get("cf-ipcountry") ||
@@ -51,7 +43,6 @@ Deno.serve(async (req) => {
       req.headers.get("x-cloudflare-ip-country") ||
       req.headers.get("country-code");
     
-    // Debug: Log all headers (remove in production if needed)
     const allHeaders: Record<string, string> = {};
     req.headers.forEach((value, key) => {
       allHeaders[key] = value;
@@ -59,13 +50,11 @@ Deno.serve(async (req) => {
     console.log("Available headers:", JSON.stringify(allHeaders));
 
     if (!countryCode) {
-      // If no country header is available, try to get IP and use a free geolocation service
       const forwarded = req.headers.get("x-forwarded-for");
       const realIp = req.headers.get("x-real-ip");
       const ip = forwarded?.split(",")[0]?.trim() || realIp;
       
       if (ip && ip !== "unknown" && !ip.startsWith("127.") && !ip.startsWith("::1")) {
-        // Use ip-api.com as fallback (free tier, 45 requests/minute)
         try {
           const geoResponse = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode`);
           if (geoResponse.ok) {
@@ -110,7 +99,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Normalize country code (should be uppercase, 2 letters)
     const normalizedCode = countryCode.toUpperCase().trim();
     
     if (normalizedCode.length !== 2) {
@@ -130,7 +118,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get country name from mapping
     const countryName = getCountryName(normalizedCode);
 
     return new Response(
