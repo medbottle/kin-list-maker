@@ -206,7 +206,7 @@ export default function ProfilePage() {
                     className="object-cover"
                     unoptimized
                     onError={(e) => {
-                      console.error("Image load error:", profileData.profilePicture);
+                      // Optionally, report the error to an error tracking service here.
                       e.currentTarget.style.display = "none";
                     }}
                   />
