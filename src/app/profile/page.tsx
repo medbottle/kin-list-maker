@@ -495,23 +495,25 @@ export default function ProfilePage() {
           </div>
 
           <section className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between ">
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <Star className="h-6 w-6" />
                 Favorite Characters
+              </h2>
+              <div className="flex items-center">
                 {favorites.length > 0 && (
-                  <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">
+                  <span className="text-sm text-gray-500 dark:text-gray-400 mr-3">
                     ({favorites.length}/5)
                   </span>
                 )}
-              </h2>
-              <Link
-                href="/characters"
-                className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                title="Go to character catalogue"
-              >
-                <UserPlus className="h-5 w-5" />
-              </Link>
+                <Link
+                  href="/characters"
+                  className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  title="Go to character catalogue"
+                >
+                  <UserPlus className="h-5 w-5" />
+                </Link>
+              </div>
             </div>
 
             {favoritesLoading ? (
@@ -571,13 +573,13 @@ export default function ProfilePage() {
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <List className="h-6 w-6" />
                 My Lists
+              </h2>
+              <div className="flex items-center">
                 {lists.length > 0 && (
-                  <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">
+                  <span className="text-sm text-gray-500 dark:text-gray-400 mr-3">
                     ({lists.length}/3)
                   </span>
                 )}
-              </h2>
-              <div className="flex gap-3">
                 <button
                   onClick={() => setIsCreateListModalOpen(true)}
                   disabled={lists.length >= 3}
