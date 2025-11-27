@@ -39,6 +39,7 @@ export default function CharacterSearch() {
     id: string;
     name: string;
   } | null>(null);
+  const [characterListCounts, setCharacterListCounts] = useState<Map<string, number>>(new Map());
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function CharacterSearch() {
     if (!user) {
       setFavoriteIds(new Set());
       setFavoriteCount(0);
+      setCharacterListCounts(new Map());
       return;
     }
 
@@ -74,7 +76,25 @@ export default function CharacterSearch() {
       }
     }
 
+    async function loadListCounts() {
+      const { data: listItems } = await supabase
+        .from("list_items")
+        .select("character_id");
+
+      if (listItems) {
+        const counts = new Map<string, number>();
+        listItems.forEach((item) => {
+          if (item.character_id) {
+            const current = counts.get(item.character_id) || 0;
+            counts.set(item.character_id, current + 1);
+          }
+        });
+        setCharacterListCounts(counts);
+      }
+    }
+
     loadFavorites();
+    loadListCounts();
   }, [user, supabase]);
 
   useEffect(() => {
@@ -295,6 +315,8 @@ export default function CharacterSearch() {
             {catalogue.map((c, index) => {
               const isFavorited = favoriteIds.has(c.id);
               const canAddFavorite = user && favoriteCount < 5;
+              const listCount = characterListCounts.get(c.id) || 0;
+              const isInList = listCount > 0;
               return (
                 <div
                   key={`${c.name}-${index}`}
@@ -353,10 +375,19 @@ export default function CharacterSearch() {
                             setSelectedCharacterForList({ id: c.id, name: c.name });
                             setIsAddToListModalOpen(true);
                           }}
-                          className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-300 hover:scale-110"
-                          title="Add to list"
+                          className={`p-2 rounded-full transition-all duration-300 hover:scale-110 relative ${
+                            isInList
+                              ? "bg-blue-600 text-white hover:bg-blue-700"
+                              : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                          }`}
+                          title={isInList ? `In ${listCount} list${listCount > 1 ? "s" : ""}` : "Add to list"}
                         >
                           <ListPlus className="h-4 w-4" />
+                          {isInList && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                              {listCount}
+                            </span>
+                          )}
                         </button>
                       </div>
                     )}
@@ -406,6 +437,8 @@ export default function CharacterSearch() {
                 if (!c.id) return null;
                 const isFavorited = favoriteIds.has(c.id);
                 const canAddFavorite = user && favoriteCount < 5;
+                const listCount = characterListCounts.get(c.id) || 0;
+                const isInList = listCount > 0;
                 return (
                   <div
                     key={c.id ?? c.name}
@@ -465,10 +498,19 @@ export default function CharacterSearch() {
                             setSelectedCharacterForList({ id: c.id!, name: c.name });
                             setIsAddToListModalOpen(true);
                           }}
-                          className="p-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-300 hover:scale-110"
-                          title="Add to list"
+                          className={`p-1.5 rounded-full transition-all duration-300 hover:scale-110 relative ${
+                            isInList
+                              ? "bg-blue-600 text-white hover:bg-blue-700"
+                              : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                          }`}
+                          title={isInList ? `In ${listCount} list${listCount > 1 ? "s" : ""}` : "Add to list"}
                         >
                           <ListPlus className="h-3 w-3" />
+                          {isInList && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full h-3.5 w-3.5 flex items-center justify-center">
+                              {listCount}
+                            </span>
+                          )}
                         </button>
                       </div>
                     )}
@@ -487,8 +529,24 @@ export default function CharacterSearch() {
             setIsAddToListModalOpen(false);
             setSelectedCharacterForList(null);
           }}
-          onSuccess={() => {
-            // Refresh favorite status if needed
+          onSuccess={async () => {
+            // Refresh list counts after adding/removing from lists
+            if (user) {
+              const { data: listItems } = await supabase
+                .from("list_items")
+                .select("character_id");
+
+              if (listItems) {
+                const counts = new Map<string, number>();
+                listItems.forEach((item) => {
+                  if (item.character_id) {
+                    const current = counts.get(item.character_id) || 0;
+                    counts.set(item.character_id, current + 1);
+                  }
+                });
+                setCharacterListCounts(counts);
+              }
+            }
           }}
           user={user}
           characterId={selectedCharacterForList.id}
