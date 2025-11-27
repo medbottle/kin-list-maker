@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
-import { Heart, Search } from "lucide-react";
+import { Heart, Search, ListPlus } from "lucide-react";
 import { AddToListModal } from "@/components/add-to-list-modal";
 import PaginationControls from "./components/pagination";
 
@@ -329,7 +329,7 @@ export default function CharacterSearch() {
                         <button
                           onClick={() => toggleFavorite(c.id, c.name)}
                           disabled={isAddingFavorite || (!isFavorited && !canAddFavorite)}
-                          className={`p-2 rounded-full transition-colors ${
+                          className={`p-2 rounded-full transition-all duration-300 hover:scale-110 ${
                             isFavorited
                               ? "bg-red-500 text-white hover:bg-red-600"
                               : canAddFavorite
@@ -345,7 +345,7 @@ export default function CharacterSearch() {
                           }
                         >
                           <Heart
-                            className={`h-4 w-4 ${isFavorited ? "fill-current" : ""}`}
+                            className={`h-4 w-4 transition-all duration-300 ${isFavorited ? "fill-current" : ""}`}
                           />
                         </button>
                         <button
@@ -353,9 +353,10 @@ export default function CharacterSearch() {
                             setSelectedCharacterForList({ id: c.id, name: c.name });
                             setIsAddToListModalOpen(true);
                           }}
-                          className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 transition-colors"
+                          className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-300 hover:scale-110"
+                          title="Add to list"
                         >
-                          Add to List
+                          <ListPlus className="h-4 w-4" />
                         </button>
                       </div>
                     )}
@@ -440,7 +441,7 @@ export default function CharacterSearch() {
                         <button
                           onClick={() => toggleFavorite(c.id!, c.name)}
                           disabled={isAddingFavorite || (!isFavorited && !canAddFavorite)}
-                          className={`p-1.5 rounded-full transition-colors ${
+                          className={`p-1.5 rounded-full transition-all duration-300 hover:scale-110 ${
                             isFavorited
                               ? "bg-red-500 text-white hover:bg-red-600"
                               : canAddFavorite
@@ -456,7 +457,7 @@ export default function CharacterSearch() {
                           }
                         >
                           <Heart
-                            className={`h-3 w-3 ${isFavorited ? "fill-current" : ""}`}
+                            className={`h-3 w-3 transition-all duration-300 ${isFavorited ? "fill-current" : ""}`}
                           />
                         </button>
                         <button
@@ -464,9 +465,10 @@ export default function CharacterSearch() {
                             setSelectedCharacterForList({ id: c.id!, name: c.name });
                             setIsAddToListModalOpen(true);
                           }}
-                          className="text-xs bg-blue-600 text-white px-2 py-1 rounded-md hover:bg-blue-700 transition-colors"
+                          className="p-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-300 hover:scale-110"
+                          title="Add to list"
                         >
-                          Add to List
+                          <ListPlus className="h-3 w-3" />
                         </button>
                       </div>
                     )}
