@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, X, Edit2, Plus } from "lucide-react";
+import { ArrowLeft, X, Edit2, Plus, UserPlus } from "lucide-react";
 import Image from "next/image";
 import { ProfileEditModal } from "@/components/profile-edit-modal";
 import { CreateListModal } from "@/components/create-list-modal";
@@ -469,6 +469,13 @@ export default function ProfilePage() {
                   </span>
                 )}
               </h2>
+              <Link
+                href="/characters"
+                className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                title="Go to character catalogue"
+              >
+                <UserPlus className="h-5 w-5" />
+              </Link>
             </div>
 
             {favoritesLoading ? (
