@@ -68,7 +68,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
             console.error("Error fetching location:", error);
           }
           
-          await supabase.auth.updateUser({
+          const { error: updateError } = await supabase.auth.updateUser({
             data: {
               display_name: displayName.trim() || null,
               user_number: userNumber,
@@ -77,8 +77,14 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
             },
           });
 
-          setError(null);
-          alert("Account created! Please log in.");
+          if (updateError) {
+            console.error("Failed to update user metadata:", updateError);
+            setError("Account created but failed to save profile information. Please try updating your profile after logging in.");
+          } else {
+            setError(null);
+            alert("Account created! Please log in.");
+          }
+          
           setMode("login");
           setEmail("");
           setPassword("");
