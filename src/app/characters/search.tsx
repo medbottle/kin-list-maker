@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
-import { Heart, Search, ListPlus, X } from "lucide-react";
+import { Heart, Search, ListPlus, X, ChevronDown } from "lucide-react";
 import { AddToListModal } from "@/components/add-to-list-modal";
 import PaginationControls from "./components/pagination";
 import { loadCharacterListCounts } from "@/lib/list-counts";
@@ -22,6 +22,9 @@ export default function CharacterSearch() {
   const [selectedMedia, setSelectedMedia] = useState<string>("all");
   const [catalogueMediaFilter, setCatalogueMediaFilter] = useState<string>("all");
   const [availableMedia, setAvailableMedia] = useState<string[]>([]);
+  const [mediaSearchQuery, setMediaSearchQuery] = useState<string>("");
+  const [isMediaDropdownOpen, setIsMediaDropdownOpen] = useState(false);
+  const mediaDropdownRef = useRef<HTMLDivElement>(null);
 
   const [catalogue, setCatalogue] = useState<CharacterResult[]>([]);
   const [catalogueLoading, setCatalogueLoading] = useState(true);
@@ -104,6 +107,22 @@ export default function CharacterSearch() {
   useEffect(() => {
     setPageInput("");
   }, [page]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        mediaDropdownRef.current &&
+        !mediaDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsMediaDropdownOpen(false);
+      }
+    }
+
+    if (isMediaDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isMediaDropdownOpen]);
 
   useEffect(() => {
     async function loadAvailableMedia() {
@@ -288,21 +307,81 @@ export default function CharacterSearch() {
               <label className="text-sm text-gray-600 dark:text-gray-400">
                 Media:
               </label>
-              <select
-                value={catalogueMediaFilter}
-                onChange={(e) => {
-                  setCatalogueMediaFilter(e.target.value);
-                  setPage(1);
-                }}
-                className="border border-gray-300 dark:border-gray-700 rounded px-3 py-1.5 bg-white dark:bg-gray-800 text-sm min-w-[150px]"
-              >
-                <option value="all">All Media</option>
-                {availableMedia.map((media) => (
-                  <option key={media} value={media}>
-                    {media}
-                  </option>
-                ))}
-              </select>
+              <div className="relative min-w-[200px]" ref={mediaDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsMediaDropdownOpen(!isMediaDropdownOpen)}
+                  className="w-full flex items-center justify-between border border-gray-300 dark:border-gray-700 rounded px-3 py-1.5 bg-white dark:bg-gray-800 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <span className="truncate">
+                    {catalogueMediaFilter === "all" ? "All Media" : catalogueMediaFilter}
+                  </span>
+                  <ChevronDown className={`h-4 w-4 flex-shrink-0 transition-transform ${isMediaDropdownOpen ? "rotate-180" : ""}`} />
+                </button>
+                {isMediaDropdownOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow-lg max-h-60 overflow-hidden flex flex-col">
+                    <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+                      <input
+                        type="text"
+                        value={mediaSearchQuery}
+                        onChange={(e) => setMediaSearchQuery(e.target.value)}
+                        placeholder="Search media..."
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="overflow-y-auto max-h-48">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCatalogueMediaFilter("all");
+                          setMediaSearchQuery("");
+                          setIsMediaDropdownOpen(false);
+                          setPage(1);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                          catalogueMediaFilter === "all"
+                            ? "bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-100"
+                            : ""
+                        }`}
+                      >
+                        All Media
+                      </button>
+                      {availableMedia
+                        .filter((media) =>
+                          media.toLowerCase().includes(mediaSearchQuery.toLowerCase())
+                        )
+                        .map((media) => (
+                          <button
+                            key={media}
+                            type="button"
+                            onClick={() => {
+                              setCatalogueMediaFilter(media);
+                              setMediaSearchQuery("");
+                              setIsMediaDropdownOpen(false);
+                              setPage(1);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors truncate ${
+                              catalogueMediaFilter === media
+                                ? "bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-100"
+                                : ""
+                            }`}
+                          >
+                            {media}
+                          </button>
+                        ))}
+                      {availableMedia.filter((media) =>
+                        media.toLowerCase().includes(mediaSearchQuery.toLowerCase())
+                      ).length === 0 && mediaSearchQuery && (
+                        <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+                          No media found matching &quot;{mediaSearchQuery}&quot;
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-2 text-sm">
