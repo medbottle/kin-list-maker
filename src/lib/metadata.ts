@@ -25,10 +25,3 @@ export const metadataByPath: Record<string, Metadata> = {
   },
 };
 
-export function getMetadataForPath(pathname: string): Metadata {
-  return metadataByPath[pathname] || {
-    title: siteMetadata.name,
-    description: siteMetadata.description,
-  };
-}
-
