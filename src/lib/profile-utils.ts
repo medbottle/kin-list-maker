@@ -7,6 +7,7 @@ export type ProfileData = {
   profilePicture: string | null;
   userNumber: string | null;
   location: string | null;
+  countryCode: string | null;
 };
 
 export function extractProfileData(user: User): ProfileData {
@@ -17,6 +18,7 @@ export function extractProfileData(user: User): ProfileData {
     profilePicture: user.user_metadata?.profile_picture || null,
     userNumber: userNumber,
     location: user.user_metadata?.location || null,
+    countryCode: user.user_metadata?.country_code || null,
   };
 }
 
