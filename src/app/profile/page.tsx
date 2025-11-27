@@ -221,7 +221,7 @@ export default function ProfilePage() {
 
       const { data: charactersData } = await supabase
         .from("characters")
-        .select("id, name, image_url, media_title")
+        .select("id, name, image, media")
         .in("id", characterIds);
 
       const characterMap = new Map(
@@ -234,8 +234,8 @@ export default function ProfilePage() {
           id: fav.id,
           character_id: fav.character_id,
           character_name: character?.name || "Unknown",
-          character_image: character?.image_url || null,
-          character_media_title: character?.media_title || null,
+          character_image: character?.image || null,
+          character_media_title: character?.media || null,
           created_at: fav.created_at,
         };
       });
@@ -274,7 +274,7 @@ export default function ProfilePage() {
 
         const { data: charactersData } = await supabase
           .from("characters")
-          .select("id, name, image_url, media_title")
+          .select("id, name, image, media")
           .in("id", Array.from(characterIds));
 
       const characterMap = new Map(
@@ -294,8 +294,8 @@ export default function ProfilePage() {
           id: item.id,
           character_id: item.character_id,
           character_name: character.name,
-          character_image: character.image_url,
-          character_media_title: character.media_title,
+          character_image: character.image,
+          character_media_title: character.media,
         };
 
         if (!itemsMap.has(item.list_id)) {
@@ -388,7 +388,7 @@ export default function ProfilePage() {
         const characterIds = favoritesData.map((fav) => fav.character_id);
         const { data: charactersData } = await supabase
           .from("characters")
-          .select("id, name, image_url, media_title")
+          .select("id, name, image, media")
           .in("id", characterIds);
 
         const characterMap = new Map(
@@ -401,8 +401,8 @@ export default function ProfilePage() {
             id: fav.id,
             character_id: fav.character_id,
             character_name: character?.name || "Unknown",
-            character_image: character?.image_url || null,
-            character_media_title: character?.media_title || null,
+            character_image: character?.image || null,
+            character_media_title: character?.media || null,
             created_at: fav.created_at,
           };
         });
@@ -433,7 +433,7 @@ export default function ProfilePage() {
 
         const { data: charactersData } = await supabase
           .from("characters")
-          .select("id, name, image_url, media_title")
+          .select("id, name, image, media")
           .in("id", Array.from(characterIds));
 
         const characterMap = new Map(
@@ -453,8 +453,8 @@ export default function ProfilePage() {
             id: item.id,
             character_id: item.character_id,
             character_name: character.name,
-            character_image: character.image_url,
-            character_media_title: character.media_title,
+            character_image: character.image,
+            character_media_title: character.media,
           };
 
           if (!itemsMap.has(item.list_id)) {

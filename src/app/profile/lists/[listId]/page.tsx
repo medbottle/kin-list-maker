@@ -102,7 +102,7 @@ export default function ListPage() {
 
         const { data: charactersData } = await supabase
           .from("characters")
-          .select("id, name, image_url, media_title")
+          .select("id, name, image, media")
           .in("id", characterIds);
 
         const characterMap = new Map(
@@ -117,8 +117,8 @@ export default function ListPage() {
               id: item.id,
               character_id: item.character_id as string,
               character_name: character?.name || "Unknown",
-              character_image: character?.image_url || null,
-              character_media_title: character?.media_title || null,
+              character_image: character?.image || null,
+              character_media_title: character?.media || null,
             };
           });
 

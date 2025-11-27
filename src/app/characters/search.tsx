@@ -13,7 +13,6 @@ type CharacterResult = {
   id: string;
   name: string;
   image: string | null;
-  popularity?: number | null;
   mediaTitle?: string | null;
 };
 
@@ -105,8 +104,8 @@ export default function CharacterSearch() {
       try {
         const { data, error } = await supabase
           .from("characters")
-          .select("id, name, image_url, popularity, media_title")
-          .order("popularity", { ascending: false })
+          .select("id, name, image, media, source_api")
+          .order("name")
           .range((page - 1) * pageSize, page * pageSize - 1);
 
         if (error) {
@@ -119,18 +118,17 @@ export default function CharacterSearch() {
         type Row = {
           id: string;
           name: string;
-          image_url: string | null;
-          popularity: number | null;
-          media_title: string | null;
+          image: string | null;
+          media: string;
+          source_api: string;
         };
 
         const mapped: CharacterResult[] =
           (data as Row[] | null)?.map((row) => ({
             id: row.id,
             name: row.name,
-            image: row.image_url,
-            popularity: row.popularity,
-            mediaTitle: row.media_title,
+            image: row.image,
+            mediaTitle: row.media,
           })) ?? [];
 
         setCatalogue(mapped);
@@ -342,11 +340,6 @@ export default function CharacterSearch() {
                           {c.mediaTitle}
                         </div>
                       )}
-                      {typeof c.popularity === "number" && (
-                        <div className="text-xs text-gray-500 dark:text-gray-500">
-                          Popularity: {c.popularity}
-                        </div>
-                      )}
                     </div>
                     {user && (
                       <div className="flex items-center gap-2">
@@ -474,11 +467,6 @@ export default function CharacterSearch() {
                       {c.mediaTitle && (
                         <div className="text-xs text-gray-600 dark:text-gray-400">
                           {c.mediaTitle}
-                        </div>
-                      )}
-                      {typeof c.popularity === "number" && (
-                        <div className="text-xs text-gray-500 dark:text-gray-500">
-                          Popularity: {c.popularity}
                         </div>
                       )}
                     </div>
