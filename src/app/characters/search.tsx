@@ -89,8 +89,13 @@ export default function CharacterSearch() {
   }, [user, supabase, refreshListCounts]);
 
   useEffect(() => {
-    topRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
-    window.scrollTo({ top: 0, behavior: "instant" });
+    // Use setTimeout to ensure scroll happens after React finishes rendering
+    const timer = setTimeout(() => {
+      topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [page]);
 
   useEffect(() => {
