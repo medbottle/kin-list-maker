@@ -528,9 +528,7 @@ export default function ProfilePage() {
                       className="inline-block"
                       title={profileData.location || ""}
                     />
-                  ) : (
-                    <span className="text-xs text-gray-400">(No flag - code: {profileData.countryCode || "null"})</span>
-                  )}
+                  ) : null}
                 </h1>
                 
                 {profileData.gender && profileData.gender.trim() !== "" && (
