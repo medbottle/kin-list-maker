@@ -150,7 +150,6 @@ async function run() {
                 image: character.profile_path
                   ? `${TMDB_IMAGE_BASE}${character.profile_path}`
                   : null,
-                popularity: character.popularity ? Math.round(character.popularity) : null,
                 media: mediaTitle,
                 source_api: "tmdb",
                 external_id: `${type}_${item.id}_${character.id}`,

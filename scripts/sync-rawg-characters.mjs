@@ -122,7 +122,6 @@ async function run() {
     const rows = newGames.map((game) => ({
       name: game.name,
       image: game.background_image || null,
-      popularity: game.rating_top || null,
       media: game.name,
       source_api: "rawg",
       external_id: String(game.id),

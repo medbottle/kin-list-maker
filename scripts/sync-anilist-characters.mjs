@@ -204,7 +204,6 @@ async function run() {
       return {
         name,
         image: c.image?.large ?? null,
-        popularity: c.favourites ?? null,
         media: sourceName,
         source_api: "anilist",
         external_id: externalId,
