@@ -121,13 +121,11 @@ async function run() {
 
     const rows = newGames.map((game) => ({
       name: game.name,
-      image_url: game.background_image || null,
-      source: "RAWG",
-      source_name: game.name,
-      source_type: "game",
+      image: game.background_image || null,
+      popularity: game.rating_top || null,
+      media: game.name,
       source_api: "rawg",
       external_id: String(game.id),
-      popularity: game.rating_top || null,
     }));
 
     const { error } = await supabase

@@ -203,13 +203,11 @@ async function run() {
 
       return {
         name,
-        image_url: c.image?.large ?? null,
-        source: "AniList",
-        source_name: sourceName,
-        source_type: "anime",
+        image: c.image?.large ?? null,
+        popularity: c.favourites ?? null,
+        media: sourceName,
         source_api: "anilist",
         external_id: externalId,
-        popularity: c.favourites ?? null,
       };
     });
 

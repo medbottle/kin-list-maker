@@ -147,15 +147,13 @@ async function run() {
             .map((character) => {
               return {
                 name: character.character,
-                image_url: character.profile_path
+                image: character.profile_path
                   ? `${TMDB_IMAGE_BASE}${character.profile_path}`
                   : null,
-                source: "TMDB",
-                source_name: mediaTitle,
-                source_type: type === "tv" ? "tv" : "movie",
+                popularity: character.popularity ? Math.round(character.popularity) : null,
+                media: mediaTitle,
                 source_api: "tmdb",
                 external_id: `${type}_${item.id}_${character.id}`,
-                popularity: character.popularity ? Math.round(character.popularity) : null,
               };
             });
 
@@ -214,7 +212,7 @@ async function run() {
       console.log(`✓ Inserted/upserted ${rows.length} characters from ${type}:`);
       const sample = rows.slice(0, 5);
       sample.forEach((row) => {
-        console.log(`  - ${row.name} from ${row.source_name}`);
+        console.log(`  - ${row.name} from ${row.media}`);
       });
       if (rows.length > 5) {
         console.log(`  ... and ${rows.length - 5} more`);
