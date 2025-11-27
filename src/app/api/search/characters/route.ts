@@ -39,7 +39,7 @@ export async function POST(req: Request) {
 
     const characters =
       data?.map((row) => ({
-        id: row.external_id ?? row.id,
+        id: row.id,
         name: row.name,
         image: row.image_url as string | null,
         source: row.source as string,
