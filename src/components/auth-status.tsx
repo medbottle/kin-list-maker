@@ -9,8 +9,6 @@ export function AuthStatus() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Memoize the Supabase client to ensure the same instance is used across renders
-  // This prevents the useEffect from running repeatedly due to supabase.auth being a new object
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
