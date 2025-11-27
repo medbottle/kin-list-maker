@@ -39,27 +39,54 @@ export default function Home() {
     async function loadFeaturedCharacters() {
       setIsLoadingCharacters(true);
       try {
-        const { data, error } = await supabase
+        const { count, error: countError } = await supabase
           .from("characters")
-          .select("id, name, image, media")
-          .not("image", "is", null)
-          .limit(100);
+          .select("*", { count: "exact", head: true })
+          .not("image", "is", null);
 
-        if (error) {
-          console.error("Error loading featured characters:", error);
+        if (countError || !count || count === 0) {
+          console.error("Error getting character count:", countError);
           setIsLoadingCharacters(false);
           return;
         }
 
-        if (data && data.length > 0) {
-          const shuffled = [...data].sort(() => Math.random() - 0.5);
-          const selected = shuffled.slice(0, 3).map((char) => ({
-            id: char.id,
-            name: char.name,
-            image: char.image,
-            media: char.media,
-          }));
-          setFeaturedCharacters(selected);
+        const randomOffsets: number[] = [];
+        while (randomOffsets.length < 3) {
+          const offset = Math.floor(Math.random() * count);
+          if (!randomOffsets.includes(offset)) {
+            randomOffsets.push(offset);
+          }
+        }
+
+        const characters = await Promise.all(
+          randomOffsets.map(async (offset) => {
+            const { data, error } = await supabase
+              .from("characters")
+              .select("id, name, image, media")
+              .not("image", "is", null)
+              .range(offset, offset)
+              .limit(1)
+              .single();
+
+            if (error || !data) {
+              return null;
+            }
+
+            return {
+              id: data.id,
+              name: data.name,
+              image: data.image,
+              media: data.media,
+            };
+          })
+        );
+
+        const validCharacters = characters.filter(
+          (char): char is CharacterCard => char !== null
+        );
+
+        if (validCharacters.length > 0) {
+          setFeaturedCharacters(validCharacters.slice(0, 3));
         }
       } catch (error) {
         console.error("Error fetching featured characters:", error);
