@@ -72,18 +72,18 @@ export default function Home() {
   }, [supabase]);
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12 bg-white dark:bg-black relative">
+    <main className="h-screen flex flex-col items-center justify-center px-4 py-12 bg-white dark:bg-black relative overflow-hidden">
       <div className="fixed top-4 right-4 z-10">
         <AuthStatus />
       </div>
 
-      <div className="max-w-3xl w-full space-y-8">
+      <div className="max-w-3xl w-full space-y-8 relative">
         {!isLoadingCharacters && featuredCharacters.length > 0 && (
-          <div className="flex justify-center gap-4 mb-8">
+          <div className="absolute -top-40 md:-top-48 left-1/2 -translate-x-1/2 flex justify-center gap-4 pointer-events-none">
             {featuredCharacters.map((character, index) => (
               <div
                 key={character.id}
-                className="relative w-24 h-32 md:w-32 md:h-40 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 shadow-lg transition-all duration-500 hover:scale-110"
+                className="relative w-24 h-32 md:w-32 md:h-40 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 shadow-lg transition-all duration-500 hover:scale-110 pointer-events-auto"
                 style={{
                   animation: `fadeInUp 0.6s ease-out ${index * 0.2}s both, float 3s ease-in-out ${index * 0.3}s infinite`,
                 }}
