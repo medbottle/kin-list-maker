@@ -414,7 +414,7 @@ export default function ProfilePage() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               {profileData.profilePicture ? (
-                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700">
+                <div className="relative w-24 h-24 rounded-full overflow-hidden transition-transform duration-300 hover:scale-110 cursor-pointer">
                   <Image
                     src={profileData.profilePicture}
                     alt="Profile picture"
@@ -428,7 +428,7 @@ export default function ProfilePage() {
                   />
                 </div>
               ) : (
-                <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center transition-transform duration-300 hover:scale-110 cursor-pointer">
                   <span className="text-gray-400 text-2xl">👤</span>
                 </div>
               )}
