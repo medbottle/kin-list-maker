@@ -7,6 +7,7 @@ import type { User } from "@supabase/supabase-js";
 import Image from "next/image";
 import { X, Plus, Edit2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { EditListModal } from "@/components/edit-list-modal";
 
 type ListItem = {
   id: string;
@@ -30,10 +31,7 @@ export default function ListPage() {
     character_count: number;
   } | null>(null);
   const [items, setItems] = useState<ListItem[]>([]);
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [isEditingDescription, setIsEditingDescription] = useState(false);
-  const [editedName, setEditedName] = useState("");
-  const [editedDescription, setEditedDescription] = useState("");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const supabase = useMemo(() => createClient(), []);
   const hasCheckedAuth = useRef(false);
 
@@ -91,8 +89,6 @@ export default function ListPage() {
         description: listData.description,
         character_count: 0,
       });
-      setEditedName(listData.name);
-      setEditedDescription(listData.description || "");
 
       const { data: itemsData } = await supabase
         .from("list_items")
@@ -141,49 +137,49 @@ export default function ListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, listId]);
 
-  async function updateListName() {
-    if (!list || !editedName.trim() || editedName.trim() === list.name) {
-      setIsEditingName(false);
-      return;
-    }
+  async function handleSaveList(name: string, description: string | null) {
+    if (!list) return;
 
     const { error } = await supabase
       .from("user_lists")
-      .update({ name: editedName.trim() })
+      .update({
+        name: name.trim(),
+        description: description,
+      })
       .eq("id", listId);
 
     if (error) {
-      console.error("Error updating list name:", error);
-      alert("Failed to update list name");
-      return;
-    }
-
-    setList((prev) => (prev ? { ...prev, name: editedName.trim() } : null));
-    setIsEditingName(false);
-  }
-
-  async function updateListDescription() {
-    if (!list) {
-      setIsEditingDescription(false);
-      return;
-    }
-
-    const trimmed = editedDescription.trim();
-    const { error } = await supabase
-      .from("user_lists")
-      .update({ description: trimmed || null })
-      .eq("id", listId);
-
-    if (error) {
-      console.error("Error updating list description:", error);
-      alert("Failed to update list description");
+      console.error("Error updating list:", error);
+      alert("Failed to update list");
       return;
     }
 
     setList((prev) =>
-      prev ? { ...prev, description: trimmed || null } : null
+      prev
+        ? {
+            ...prev,
+            name: name.trim(),
+            description: description,
+          }
+        : null
     );
-    setIsEditingDescription(false);
+  }
+
+  async function handleDeleteList() {
+    if (!list) return;
+
+    const { error } = await supabase
+      .from("user_lists")
+      .delete()
+      .eq("id", listId);
+
+    if (error) {
+      console.error("Error deleting list:", error);
+      alert("Failed to delete list");
+      return;
+    }
+
+    router.push("/profile");
   }
 
   async function removeCharacter(itemId: string) {
@@ -229,113 +225,29 @@ export default function ListPage() {
 
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            {isEditingName ? (
-              <div className="flex-1 flex items-center gap-2">
-                <input
-                  type="text"
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  className="flex-1 text-3xl font-semibold text-gray-900 dark:text-white bg-transparent border-b-2 border-blue-500 focus:outline-none"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      updateListName();
-                    } else if (e.key === "Escape") {
-                      setEditedName(list.name);
-                      setIsEditingName(false);
-                    }
-                  }}
-                />
-                <button
-                  onClick={updateListName}
-                  className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => {
-                    setEditedName(list.name);
-                    setIsEditingName(false);
-                  }}
-                  className="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <>
-                <h1 className="text-3xl font-semibold text-gray-900 dark:text-white">
-                  {list.name}
-                </h1>
-                <button
-                  onClick={() => setIsEditingName(true)}
-                  className="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                  title="Edit name"
-                >
-                  <Edit2 className="h-5 w-5" />
-                </button>
-              </>
-            )}
+            <h1 className="text-3xl font-semibold text-gray-900 dark:text-white">
+              {list.name}
+            </h1>
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              title="Edit list"
+            >
+              <Edit2 className="h-5 w-5" />
+            </button>
           </div>
 
-          {isEditingDescription ? (
-            <div className="flex items-start gap-2">
-              <textarea
-                value={editedDescription}
-                onChange={(e) => setEditedDescription(e.target.value)}
-                className="flex-1 text-sm text-gray-600 dark:text-gray-400 bg-transparent border-b-2 border-blue-500 focus:outline-none resize-none"
-                rows={2}
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") {
-                    setEditedDescription(list.description || "");
-                    setIsEditingDescription(false);
-                  }
-                }}
-              />
-              <div className="flex flex-col gap-1">
-                <button
-                  onClick={updateListDescription}
-                  className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => {
-                    setEditedDescription(list.description || "");
-                    setIsEditingDescription(false);
-                  }}
-                  className="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 text-xs"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+          {list.description ? (
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {list.description}
+            </p>
           ) : (
-            <div className="flex items-start gap-2">
-              {list.description ? (
-                <p className="text-sm text-gray-600 dark:text-gray-400 flex-1">
-                  {list.description}
-                </p>
-              ) : (
-                <p className="text-sm text-gray-400 dark:text-gray-500 italic flex-1">
-                  No description
-                </p>
-              )}
-              <button
-                onClick={() => setIsEditingDescription(true)}
-                className="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex-shrink-0"
-                title="Edit description"
-              >
-                <Edit2 className="h-4 w-4" />
-              </button>
-            </div>
+            <p className="text-sm text-gray-400 dark:text-gray-500 italic">
+              No description
+            </p>
           )}
 
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-500 dark:text-gray-500">
-              {items.length} character{items.length !== 1 ? "s" : ""} ({list.character_count}/10)
-            </p>
+          <div className="flex items-center justify-end">
             <Link
               href="/characters"
               className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm ${
@@ -403,6 +315,17 @@ export default function ListPage() {
           )}
         </div>
       </div>
+
+      {list && (
+        <EditListModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSave={handleSaveList}
+          onDelete={handleDeleteList}
+          currentName={list.name}
+          currentDescription={list.description}
+        />
+      )}
     </main>
   );
 }
