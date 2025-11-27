@@ -66,6 +66,7 @@ export default function ProfilePage() {
     gender: null,
     profilePicture: null,
     userNumber: null,
+    location: null,
   });
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -83,8 +84,49 @@ export default function ProfilePage() {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       const userToSet = currentUser || session.user;
       if (userToSet) {
-        setUser(userToSet);
-        setProfileData(extractProfileData(userToSet));
+        // Auto-set location if not already set
+        if (!userToSet.user_metadata?.location) {
+          try {
+            const geoResponse = await fetch("/api/geolocation");
+            const geoData = await geoResponse.json();
+            console.log("Geolocation data:", geoData);
+            if (geoData.country) {
+              const { error: updateError } = await supabase.auth.updateUser({
+                data: {
+                  ...userToSet.user_metadata,
+                  location: geoData.country,
+                },
+              });
+              if (updateError) {
+                console.error("Error updating user location:", updateError);
+              }
+              // Refresh session to get updated metadata
+              await supabase.auth.refreshSession();
+              // Get updated user data
+              const { data: { user: updatedUser } } = await supabase.auth.getUser();
+              if (updatedUser) {
+                console.log("Updated user metadata:", updatedUser.user_metadata);
+                setUser(updatedUser);
+                setProfileData(extractProfileData(updatedUser));
+              } else {
+                setUser(userToSet);
+                setProfileData(extractProfileData(userToSet));
+              }
+            } else {
+              console.log("No country data from geolocation API");
+              setUser(userToSet);
+              setProfileData(extractProfileData(userToSet));
+            }
+          } catch (error) {
+            console.error("Error setting location:", error);
+            setUser(userToSet);
+            setProfileData(extractProfileData(userToSet));
+          }
+        } else {
+          console.log("Location already set:", userToSet.user_metadata?.location);
+          setUser(userToSet);
+          setProfileData(extractProfileData(userToSet));
+        }
       }
       setLoading(false);
       hasCheckedAuth.current = true;
@@ -483,6 +525,12 @@ export default function ProfilePage() {
                           day: "numeric",
                         })
                       : "Loading..."}
+                  </p>
+                )}
+                {profileData.location && profileData.location.trim() !== "" && (
+                  <p className="text-sm text-gray-500 dark:text-gray-500">
+                    <span className="font-semibold">Location:</span>{" "}
+                    {profileData.location}
                   </p>
                 )}
               </div>
