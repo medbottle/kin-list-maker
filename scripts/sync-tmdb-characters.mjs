@@ -95,7 +95,7 @@ function getStartingPage() {
 
 async function run() {
   const startingPage = getStartingPage();
-  let page = startingPage;
+  let page;
   let totalNew = 0;
   let totalSkipped = 0;
 
