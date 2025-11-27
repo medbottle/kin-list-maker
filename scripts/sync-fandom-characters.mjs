@@ -14,10 +14,8 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const FANDOM_BASE_URL = process.env.FANDOM_WIKI_URL || "https://hazbinhotel.fandom.com";
-const FANDOM_API_URL = `${FANDOM_BASE_URL}/api.php`;
 
-async function fetchCategoryMembers(categoryName, continueToken = null) {
+async function fetchCategoryMembers(apiUrl, categoryName, continueToken = null) {
   const params = new URLSearchParams({
     action: "query",
     format: "json",
@@ -31,20 +29,36 @@ async function fetchCategoryMembers(categoryName, continueToken = null) {
     params.set("cmcontinue", continueToken);
   }
 
-  const response = await fetch(`${FANDOM_API_URL}?${params.toString()}`);
+  const fullUrl = `${apiUrl}?${params.toString()}`;
+  console.log(`Fetching: ${fullUrl}`);
+
+  const response = await fetch(fullUrl);
   
   if (response.status === 429) {
     throw new Error("RATE_LIMIT");
   }
 
   if (!response.ok) {
-    throw new Error(`Fandom API error: ${response.statusText}`);
+    const errorText = await response.text();
+    console.error(`API Error Response: ${errorText}`);
+    throw new Error(`Fandom API error: ${response.status} ${response.statusText}`);
   }
 
-  return await response.json();
+  const data = await response.json();
+  
+  if (data.error) {
+    console.error(`API Error:`, JSON.stringify(data.error, null, 2));
+    throw new Error(`Fandom API error: ${data.error.info || JSON.stringify(data.error)}`);
+  }
+
+  if (!data.query) {
+    console.warn(`No query data in response:`, JSON.stringify(data, null, 2));
+  }
+
+  return data;
 }
 
-async function fetchPageInfo(pageIds) {
+async function fetchPageInfo(apiUrl, pageIds) {
   const params = new URLSearchParams({
     action: "query",
     format: "json",
@@ -54,7 +68,7 @@ async function fetchPageInfo(pageIds) {
     pithumbsize: "500",
   });
 
-  const response = await fetch(`${FANDOM_API_URL}?${params.toString()}`);
+  const response = await fetch(`${apiUrl}?${params.toString()}`);
   
   if (response.status === 429) {
     throw new Error("RATE_LIMIT");
@@ -111,11 +125,15 @@ function getMediaName(wikiUrl) {
 }
 
 async function run() {
-  const categoryName = process.argv[2] || "Characters";
-  const startingPage = parseInt(process.argv[3] || "1", 10);
+  const wikiUrl = process.argv[2] || process.env.FANDOM_WIKI_URL || "https://hazbinhotel.fandom.com";
+  const categoryName = process.argv[3] || "Characters";
+  const startingPage = parseInt(process.argv[4] || "1", 10);
+
+  const fandomBaseUrl = wikiUrl;
+  const fandomApiUrl = `${fandomBaseUrl}/api.php`;
 
   console.log(`=== Fandom Character Sync ===`);
-  console.log(`Wiki: ${FANDOM_BASE_URL}`);
+  console.log(`Wiki: ${fandomBaseUrl}`);
   console.log(`Category: ${categoryName}`);
   console.log(`Starting from page: ${startingPage}\n`);
 
@@ -126,7 +144,7 @@ async function run() {
   let page = 0;
   let totalNew = 0;
   let totalSkipped = 0;
-  const mediaName = getMediaName(FANDOM_BASE_URL);
+  const mediaName = getMediaName(fandomBaseUrl);
 
   while (true) {
     page++;
@@ -140,7 +158,7 @@ async function run() {
 
     let data;
     try {
-      data = await fetchCategoryMembers(categoryName, continueToken);
+      data = await fetchCategoryMembers(fandomApiUrl, categoryName, continueToken);
     } catch (error) {
       if (error.message === "RATE_LIMIT") {
         console.warn("Hit Fandom rate limit. Waiting 30 seconds before retrying...");
@@ -148,6 +166,11 @@ async function run() {
         continue;
       }
       console.error(`Error fetching category members:`, error.message);
+      console.error(`\nTroubleshooting tips:`);
+      console.error(`1. Check if the wiki URL is correct: ${fandomBaseUrl}`);
+      console.error(`2. Check if the category exists: Category:${categoryName}`);
+      console.error(`3. Try visiting: ${fandomBaseUrl}/wiki/Category:${categoryName}`);
+      console.error(`4. Some wikis use different category names (e.g., "Character" instead of "Characters")`);
       break;
     }
 
@@ -171,7 +194,7 @@ async function run() {
       const pageIds = batch.map((m) => String(m.pageid));
       let pageInfo;
       try {
-        pageInfo = await fetchPageInfo(pageIds);
+        pageInfo = await fetchPageInfo(fandomApiUrl, pageIds);
       } catch (error) {
         console.error(`Error fetching page info:`, error.message);
         continue;
