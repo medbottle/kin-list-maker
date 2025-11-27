@@ -36,6 +36,16 @@ export default function Home() {
   }, [supabase.auth]);
 
   useEffect(() => {
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, []);
+
+  useEffect(() => {
     async function loadFeaturedCharacters() {
       setIsLoadingCharacters(true);
       try {
