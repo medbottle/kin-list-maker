@@ -625,7 +625,8 @@ export default function ProfilePage() {
                         >
                           {list.name}
                         </h3>
-                        <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap flex items-center gap-1">
+                          <Users className="h-4 w-4" />
                           ({list.character_count}/10)
                         </span>
                       </div>
