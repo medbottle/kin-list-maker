@@ -4,15 +4,20 @@ import { createClient } from "@supabase/supabase-js";
 dotenv.config({ path: ".env.local" });
 dotenv.config();
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  console.error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY in environment variables.");
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error("Missing NEXT_PUBLIC_SUPABASE_URL or API key in environment variables.");
+  console.error("For sync scripts, use SUPABASE_SERVICE_ROLE_KEY (bypasses RLS)");
+  console.error("Or use NEXT_PUBLIC_SUPABASE_ANON_KEY if RLS allows inserts");
   console.error("Checked .env.local and .env in the project root.");
   process.exit(1);
 }
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  supabaseUrl,
+  supabaseKey
 );
 
 const ANILIST_URL = "https://graphql.anilist.co";
@@ -187,29 +192,33 @@ async function run() {
 
     const rows = newCharacters.map((c) => {
       const primaryMedia = c.media?.nodes?.[0] ?? null;
-      const mediaTitle =
+      const sourceName =
         primaryMedia?.title?.english ||
         primaryMedia?.title?.romaji ||
         primaryMedia?.title?.native ||
-        null;
+        "Unknown";
 
       const name = c.name.full.trim();
+      const externalId = String(c.id);
 
       return {
         name,
         image_url: c.image?.large ?? null,
         source: "AniList",
-        external_id: String(c.id),
+        source_name: sourceName,
+        source_type: "anime",
+        source_api: "anilist",
+        external_id: externalId,
         popularity: c.favourites ?? null,
-        media_id: primaryMedia?.id ?? null,
-        media_title: mediaTitle,
-        media_type: primaryMedia?.type ?? null,
       };
     });
 
     const { error } = await supabase
       .from("characters")
-      .upsert(rows, { onConflict: "external_id,source" });
+      .upsert(rows, { 
+        onConflict: "external_id,source_api",
+        ignoreDuplicates: false 
+      });
 
     if (error) {
       console.error("Supabase error:", error);
@@ -223,7 +232,7 @@ async function run() {
 
     console.log(`✓ Inserted/upserted ${rows.length} characters:`);
     rows.forEach((row) => {
-      const mediaInfo = row.media_title ? ` (${row.media_title})` : "";
+      const mediaInfo = row.source_name ? ` (${row.source_name})` : "";
       console.log(`  - ${row.name}${mediaInfo}`);
     });
 
