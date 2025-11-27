@@ -83,7 +83,7 @@ export function ProfileEditModal({
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
         const filePath = `profile-pictures/${fileName}`;
 
-        const { error: uploadError, data: uploadData } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from("avatars")
           .upload(filePath, profilePicture, {
             cacheControl: "3600",
