@@ -125,7 +125,6 @@ export function ProfileEditModal({
         return;
       }
 
-      console.log("Profile updated, metadata:", updatedMetadata);
       await supabase.auth.refreshSession();
       
       const {
