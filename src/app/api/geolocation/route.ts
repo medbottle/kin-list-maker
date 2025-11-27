@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    console.log("Geolocation failed - status:", data.status, "country:", data.country, "countryCode:", data.countryCode);
+    console.error("Geolocation failed - status:", data.status, "country:", data.country, "countryCode:", data.countryCode);
     return NextResponse.json({ 
       country: null,
       countryCode: null 
