@@ -545,11 +545,14 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        <Link href="/" className="inline-block">
-          <button className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-        </Link>
+        <button
+          onClick={() => router.back()}
+          className="fixed top-24 left-8"
+          title="Go back"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="h-10 w-10 transition-transform duration-200 hover:scale-110" />
+        </button>
 
         <div className="space-y-6">
           <div className="flex items-start justify-between">
