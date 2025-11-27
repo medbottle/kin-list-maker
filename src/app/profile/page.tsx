@@ -67,8 +67,8 @@ export default function ProfilePage() {
     gender: null,
     profilePicture: null,
     userNumber: null,
-    location: null,
     countryCode: null,
+    location: null,
   });
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -146,7 +146,6 @@ export default function ProfilePage() {
             setProfileData(extractProfileData(userToSet));
           }
         } else {
-          console.log("Location already set:", userToSet.user_metadata?.location, "CountryCode:", userToSet.user_metadata?.country_code);
           setUser(userToSet);
           setProfileData(extractProfileData(userToSet));
         }
@@ -561,12 +560,6 @@ export default function ProfilePage() {
                       : "Loading..."}
                   </p>
                 )}
-                {profileData.location && profileData.location.trim() !== "" && (
-                  <p className="text-sm text-gray-500 dark:text-gray-500">
-                    <span className="font-semibold">Location:</span>{" "}
-                    {profileData.location}
-                  </p>
-                )}
               </div>
             </div>
             <button
@@ -799,12 +792,22 @@ export default function ProfilePage() {
         currentGender={profileData.gender}
         currentProfilePicture={profileData.profilePicture}
         onUpdate={async () => {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (session?.user) {
-            setUser(session.user);
-            setProfileData(extractProfileData(session.user));
+          // Wait a bit for the session to refresh
+          await new Promise(resolve => setTimeout(resolve, 100));
+          // Get the latest user data with refreshed metadata
+          const { data: { user: updatedUser } } = await supabase.auth.getUser();
+          if (updatedUser) {
+            setUser(updatedUser);
+            setProfileData(extractProfileData(updatedUser));
+          } else {
+            // Fallback to session if getUser fails
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+            if (session?.user) {
+              setUser(session.user);
+              setProfileData(extractProfileData(session.user));
+            }
           }
         }}
       />
