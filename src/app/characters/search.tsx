@@ -195,11 +195,7 @@ function PaginationControls({
             hasMore={hasMore}
             isLoading={catalogueLoading}
             onPrevious={() => setPage((p) => Math.max(1, p - 1))}
-            onNext={() => {
-              if (hasMore && !catalogueLoading) {
-                setPage((p) => p + 1);
-              }
-            }}
+            onNext={() => setPage((p) => p + 1)}
             showPageInfo={false}
           />
         </div>
@@ -343,11 +339,7 @@ function PaginationControls({
         hasMore={hasMore}
         isLoading={catalogueLoading}
         onPrevious={() => setPage((p) => Math.max(1, p - 1))}
-        onNext={() => {
-          if (hasMore && !catalogueLoading) {
-            setPage((p) => p + 1);
-          }
-        }}
+        onNext={() => setPage((p) => p + 1)}
       />
 
     </div>
