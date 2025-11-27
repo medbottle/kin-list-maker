@@ -225,7 +225,7 @@ export default function ProfilePage() {
     loadLists();
   }, [user, supabase]);
 
-  async function removeFavorite(favoriteId: string, characterId: string) {
+  async function removeFavorite(favoriteId: string) {
     const { error } = await supabase
       .from("favorite_characters")
       .delete()
@@ -424,7 +424,7 @@ export default function ProfilePage() {
 
   return (
     <main className="min-h-screen p-8 bg-white dark:bg-black">
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-8">
         <Link href="/" className="inline-block">
           <ArrowLeft className="h-10 w-10 transition-transform duration-200 hover:scale-110" />
         </Link>
@@ -512,14 +512,14 @@ export default function ProfilePage() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-5 gap-4 justify-items-center">
                 {favorites.map((fav) => (
                   <div
                     key={fav.id}
-                    className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 hover:shadow-md transition-shadow relative"
+                    className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 hover:shadow-md transition-shadow relative w-full"
                   >
                     <button
-                      onClick={() => removeFavorite(fav.id, fav.character_id)}
+                      onClick={() => removeFavorite(fav.id)}
                       className="absolute top-2 right-2 z-10 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
                       title="Remove from favorites"
                     >
@@ -531,7 +531,7 @@ export default function ProfilePage() {
                           src={fav.character_image}
                           alt={fav.character_name}
                           fill
-                          sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"
+                          sizes="(min-width: 1024px) 20vw, 25vw"
                           className="object-cover rounded-md"
                         />
                       </div>
@@ -546,18 +546,6 @@ export default function ProfilePage() {
                         </div>
                       )}
                     </div>
-                    <button
-                      onClick={() => {
-                        setSelectedCharacterForList({
-                          id: fav.character_id,
-                          name: fav.character_name,
-                        });
-                        setIsAddToListModalOpen(true);
-                      }}
-                      className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 transition-colors"
-                    >
-                      Add to List
-                    </button>
                   </div>
                 ))}
               </div>
