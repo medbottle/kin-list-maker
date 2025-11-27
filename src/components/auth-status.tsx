@@ -43,7 +43,7 @@ export function AuthStatus() {
       <>
         <div className="flex items-center gap-4">
           <p className="text-sm text-green-600 dark:text-green-400">
-            ✓ Logged in as {user.email}
+            Logged in as <span className="text-white">{user.user_metadata?.display_name || user.email}</span>
           </p>
           <button
             onClick={handleLogout}
