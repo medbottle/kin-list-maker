@@ -86,7 +86,6 @@ export default function ProfilePage() {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       const userToSet = currentUser || session.user;
       if (userToSet) {
-        // Auto-set location and countryCode if not already set
         const needsLocation = !userToSet.user_metadata?.location;
         const needsCountryCode = !userToSet.user_metadata?.country_code;
         
@@ -102,12 +101,10 @@ export default function ProfilePage() {
                 ...userToSet.user_metadata,
               };
               
-              // Only update location if it's missing
               if (needsLocation) {
                 updatedMetadata.location = geoData.country;
               }
               
-              // Only update country_code if it's missing
               if (needsCountryCode) {
                 updatedMetadata.country_code = geoData.countryCode;
               }
@@ -122,9 +119,7 @@ export default function ProfilePage() {
                 console.log("Successfully saved - location:", updatedMetadata.location, "country_code:", updatedMetadata.country_code);
               }
               
-              // Refresh session to get updated metadata
               await supabase.auth.refreshSession();
-              // Get updated user data
               const { data: { user: updatedUser } } = await supabase.auth.getUser();
               if (updatedUser) {
                 console.log("Updated user metadata:", updatedUser.user_metadata);
@@ -794,7 +789,6 @@ export default function ProfilePage() {
         onUpdate={async () => {
           // Wait a bit for the session to refresh
           await new Promise(resolve => setTimeout(resolve, 100));
-          // Get the latest user data with refreshed metadata
           const { data: { user: updatedUser } } = await supabase.auth.getUser();
           if (updatedUser) {
             setUser(updatedUser);
