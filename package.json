@@ -7,22 +7,28 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "sync:anilist": "node scripts/sync-anilist-characters.mjs"
+    "sync:anilist": "node scripts/sync-anilist-characters.mjs",
+    "sync:tmdb": "node scripts/sync-tmdb-characters.mjs",
+    "sync:rawg": "node scripts/sync-rawg-characters.mjs",
+    "sync:fandom": "node scripts/sync-fandom-characters.mjs",
+    "sync:all": "node scripts/sync-all-characters.mjs"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.8.0",
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "^2.84.0",
     "dotenv": "^16.4.5",
     "lucide-react": "^0.555.0",
     "next": "16.0.4",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "react-world-flags": "^1.6.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-world-flags": "^1.6.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.4",
     "tailwindcss": "^4",

@@ -19,7 +19,7 @@ export default function LoginPage() {
     if (error) {
       alert(error.message);
     } else {
-      window.location.href = "/profile";
+      window.location.href = "/dashboard";
     }
   }
 

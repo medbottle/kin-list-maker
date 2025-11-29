@@ -7,10 +7,11 @@ const supabase = createClient(
 
 interface SearchBody {
   query: string;
+  media?: string;
 }
 
 export async function POST(req: Request) {
-  const { query }: SearchBody = await req.json();
+  const { query, media }: SearchBody = await req.json();
 
   if (!query || typeof query !== "string") {
     return Response.json(
@@ -22,11 +23,16 @@ export async function POST(req: Request) {
   const trimmed = query.trim();
 
   try {
-    const { data, error } = await supabase
+    let queryBuilder = supabase
       .from("characters")
-      .select("id, name, image_url, source, external_id, popularity, media_title")
-      .ilike("name", `%${trimmed}%`)
-      .order("popularity", { ascending: false, nullsFirst: false })
+      .select("id, name, image, media, source_api")
+      .ilike("name", `%${trimmed}%`);
+
+    if (media && media !== "all") {
+      queryBuilder = queryBuilder.eq("media", media);
+    }
+
+    const { data, error } = await queryBuilder
       .order("name")
       .limit(25);
 
@@ -39,12 +45,11 @@ export async function POST(req: Request) {
 
     const characters =
       data?.map((row) => ({
-        id: row.external_id ?? row.id,
+        id: row.id,
         name: row.name,
-        image: row.image_url as string | null,
-        source: row.source as string,
-        popularity: (row as any).popularity as number | null,
-        mediaTitle: (row as any).media_title as string | null,
+        image: row.image as string | null,
+        media: row.media as string,
+        source_api: row.source_api as string,
       })) ?? [];
 
     return Response.json({ characters });

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createClient } from "@/lib/supabase-client";
 import Image from "next/image";
+import { Upload, Trash2, X } from "lucide-react";
 
 interface ProfileEditModalProps {
   isOpen: boolean;
@@ -122,7 +123,11 @@ export function ProfileEditModal({
         return;
       }
 
+      // Refresh session to ensure metadata is updated
       await supabase.auth.refreshSession();
+      
+      // Wait a moment for the refresh to propagate
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       onUpdate();
       onClose();
@@ -154,30 +159,32 @@ export function ProfileEditModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onClick={handleClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-md w-full mx-4 p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Edit Profile
           </h2>
           <button
             onClick={handleClose}
-            className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-2xl"
+            className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            title="Close"
+            aria-label="Close"
           >
-            ×
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="flex flex-col items-center space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex flex-col items-center space-y-3">
             <div className="relative">
               {previewUrl ? (
-                <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-gray-200 dark:border-gray-700">
+                <div className="relative w-24 h-24 rounded-full overflow-hidden">
                   <Image
                     src={previewUrl}
                     alt="Profile picture"
@@ -186,12 +193,12 @@ export function ProfileEditModal({
                   />
                 </div>
               ) : (
-                <div className="w-32 h-32 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                  <span className="text-gray-400 text-4xl">👤</span>
+                <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                  <span className="text-gray-400 text-2xl">👤</span>
                 </div>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex mt-2 gap-2 items-center justify-center">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -202,17 +209,21 @@ export function ProfileEditModal({
               />
               <label
                 htmlFor="profile-picture-input"
-                className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+                className="cursor-pointer p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center justify-center"
+                title={profilePicture ? "Change Picture" : "Upload Picture"}
+                aria-label={profilePicture ? "Change Picture" : "Upload Picture"}
               >
-                {profilePicture ? "Change Picture" : "Upload Picture"}
+                <Upload className="h-5 w-5" />
               </label>
               {(currentProfilePicture || previewUrl) && (
                 <button
                   type="button"
                   onClick={handleRemovePicture}
-                  className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm"
+                  className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center justify-center ml-1"
+                  title="Remove Picture"
+                  aria-label="Remove Picture"
                 >
-                  Remove Picture
+                  <Trash2 className="h-5 w-5 text-red-600 dark:text-red-500" />
                 </button>
               )}
             </div>
@@ -221,7 +232,7 @@ export function ProfileEditModal({
           <div>
             <label
               htmlFor="display-name"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
               Display Name
             </label>
@@ -231,14 +242,14 @@ export function ProfileEditModal({
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Enter your display name"
-              className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 w-full rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-2 w-full rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
             <label
               htmlFor="gender"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
               Gender
             </label>
@@ -246,7 +257,7 @@ export function ProfileEditModal({
               id="gender"
               value={gender}
               onChange={(e) => setGender(e.target.value)}
-              className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-3 w-full rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white p-2 w-full rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select gender</option>
               <option value="male">Male</option>
@@ -256,20 +267,20 @@ export function ProfileEditModal({
             </select>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 justify-end">
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
-              {loading ? "Saving..." : "Save Changes"}
+              {loading ? "Saving..." : "Save"}
             </button>
           </div>
         </form>
@@ -277,3 +288,4 @@ export function ProfileEditModal({
     </div>
   );
 }
+

@@ -1,21 +1,31 @@
- "use client";
+"use client";
 
- import Image from "next/image";
- import { useEffect, useState } from "react";
- import { supabase } from "../../lib/supabase";
+import Image from "next/image";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { createClient } from "@/lib/supabase-client";
+import type { User } from "@supabase/supabase-js";
+import { Heart, Search, ListPlus, X, ChevronDown } from "lucide-react";
+import { AddToListModal } from "@/components/add-to-list-modal";
 import PaginationControls from "./components/pagination";
+import { loadCharacterListCounts } from "@/lib/list-counts";
 
- type CharacterResult = {
-   id: number | null;
-   name: string;
-   image: string | null;
-   popularity?: number | null;
-   mediaTitle?: string | null;
- };
+type CharacterResult = {
+  id: string;
+  name: string;
+  image: string | null;
+  mediaTitle?: string | null;
+};
 
- export default function CharacterSearch() {
+export default function CharacterSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CharacterResult[]>([]);
+  const [selectedMedia, setSelectedMedia] = useState<string>("all");
+  const [catalogueMediaFilter, setCatalogueMediaFilter] = useState<string>("all");
+  const [availableMedia, setAvailableMedia] = useState<string[]>([]);
+  const [isMediaLoading, setIsMediaLoading] = useState(true);
+  const [mediaSearchQuery, setMediaSearchQuery] = useState<string>("");
+  const [isMediaDropdownOpen, setIsMediaDropdownOpen] = useState(false);
+  const mediaDropdownRef = useRef<HTMLDivElement>(null);
 
   const [catalogue, setCatalogue] = useState<CharacterResult[]>([]);
   const [catalogueLoading, setCatalogueLoading] = useState(true);
@@ -24,19 +34,145 @@ import PaginationControls from "./components/pagination";
   const [pageSize, setPageSize] = useState<20 | 40 | 60 | 80 | 100>(40);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [pageInput, setPageInput] = useState<string>("");
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  const [user, setUser] = useState<User | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [favoriteCount, setFavoriteCount] = useState(0);
+  const [isAddingFavorite, setIsAddingFavorite] = useState(false);
+  const [isAddToListModalOpen, setIsAddToListModalOpen] = useState(false);
+  const [selectedCharacterForList, setSelectedCharacterForList] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [characterListCounts, setCharacterListCounts] = useState<Map<string, number>>(new Map());
+  const supabase = useMemo(() => createClient(), []);
+  const topRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
+  const refreshListCounts = useCallback(async () => {
+    if (!user) return;
+    const counts = await loadCharacterListCounts(supabase);
+    setCharacterListCounts(counts);
+  }, [user, supabase]);
+
+  useEffect(() => {
+    if (!user) {
+      setFavoriteIds(new Set());
+      setFavoriteCount(0);
+      setCharacterListCounts(new Map());
+      return;
+    }
+
+    async function loadFavorites() {
+      const { data } = await supabase
+        .from("favorite_characters")
+        .select("character_id");
+
+      if (data) {
+        const ids = new Set(data.map((fav) => fav.character_id));
+        setFavoriteIds(ids);
+        setFavoriteCount(ids.size);
+      }
+    }
+
+    loadFavorites();
+    refreshListCounts();
+  }, [user, supabase, refreshListCounts]);
+
+  useEffect(() => {
+    // Use setTimeout to ensure scroll happens after React finishes rendering
+    const timer = setTimeout(() => {
+      topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [page]);
+
+  useEffect(() => {
+    setPageInput("");
+  }, [page]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        mediaDropdownRef.current &&
+        !mediaDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsMediaDropdownOpen(false);
+      }
+    }
+
+    if (isMediaDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isMediaDropdownOpen]);
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    async function loadAvailableMedia() {
+      setIsMediaLoading(true);
+      try {
+        const res = await fetch("/api/media/list");
+        if (!res.ok) {
+          console.error("Error loading media:", res.statusText);
+          if (isMounted) {
+            setIsMediaLoading(false);
+          }
+          return;
+        }
+        const data = await res.json();
+        if (isMounted && data.media && Array.isArray(data.media)) {
+          setAvailableMedia(data.media);
+          setIsMediaLoading(false);
+        }
+      } catch (error) {
+        console.error("Error fetching media:", error);
+        if (isMounted) {
+          setIsMediaLoading(false);
+        }
+      }
+    }
+
+    void loadAvailableMedia();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     async function loadCatalogue() {
       setCatalogueLoading(true);
       setCatalogueError(null);
       try {
-        const { data, error } = await supabase
-          .from("characters")
-          .select("id, name, image_url, popularity, media_title")
-          .order("popularity", { ascending: false })
-          .range((page - 1) * pageSize, page * pageSize - 1);
+        const mediaFilter = catalogueMediaFilter && catalogueMediaFilter !== "all" 
+          ? catalogueMediaFilter 
+          : null;
+
+        const { data, error } = await supabase.rpc("get_characters_sorted", {
+          p_media_filter: mediaFilter,
+          p_limit: pageSize,
+          p_offset: (page - 1) * pageSize,
+        });
 
         if (error) {
           console.error("Error loading catalogue:", error);
@@ -46,19 +182,19 @@ import PaginationControls from "./components/pagination";
         }
 
         type Row = {
+          id: string;
           name: string;
-          image_url: string | null;
-          popularity: number | null;
-          media_title: string | null;
+          image: string | null;
+          media: string;
+          source_api: string;
         };
 
         const mapped: CharacterResult[] =
           (data as Row[] | null)?.map((row) => ({
-            id: null, // we don't need external_id here
+            id: row.id,
             name: row.name,
-            image: row.image_url,
-            popularity: row.popularity,
-            mediaTitle: row.media_title,
+            image: row.image,
+            mediaTitle: row.media,
           })) ?? [];
 
         setCatalogue(mapped);
@@ -69,7 +205,7 @@ import PaginationControls from "./components/pagination";
     }
 
     void loadCatalogue();
-  }, [pageSize, page]);
+  }, [pageSize, page, catalogueMediaFilter, supabase]);
 
   async function searchCharactersInDb() {
     if (!query.trim()) return;
@@ -77,7 +213,7 @@ import PaginationControls from "./components/pagination";
     try {
       const res = await fetch("/api/search/characters", {
         method: "POST",
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, media: selectedMedia }),
       });
 
       const data = await res.json();
@@ -101,8 +237,62 @@ import PaginationControls from "./components/pagination";
     }
   }
 
+  async function toggleFavorite(characterId: string, characterName: string) {
+    if (!user) {
+      alert("Please log in to add favorites");
+      return;
+    }
+
+    if (isAddingFavorite) return;
+    setIsAddingFavorite(true);
+
+    try {
+      const isFavorited = favoriteIds.has(characterId);
+
+      if (isFavorited) {
+        const { error } = await supabase
+          .from("favorite_characters")
+          .delete()
+          .eq("character_id", characterId)
+          .eq("user_id", user.id);
+
+        if (error) throw error;
+
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(characterId);
+          return next;
+        });
+        setFavoriteCount((prev) => prev - 1);
+      } else {
+        if (favoriteCount >= 5) {
+          alert("You can only have 5 favorite characters. Remove one first.");
+          setIsAddingFavorite(false);
+          return;
+        }
+
+        const { error } = await supabase
+          .from("favorite_characters")
+          .insert({
+            user_id: user.id,
+            character_id: characterId,
+          });
+
+        if (error) throw error;
+
+        setFavoriteIds((prev) => new Set(prev).add(characterId));
+        setFavoriteCount((prev) => prev + 1);
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      alert("Failed to update favorite");
+    } finally {
+      setIsAddingFavorite(false);
+    }
+  }
+
   return (
-    <div className="space-y-8 max-w-5xl mx-auto px-4">
+    <div ref={topRef} className="space-y-8 max-w-5xl mx-auto px-4">
 
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -115,50 +305,190 @@ import PaginationControls from "./components/pagination";
         <div className="flex gap-3">
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 transition-colors"
-          >
-            Search
+            className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Search characters"
+            >
+            <Search className="h-4 w-4" />
           </button>
         </div>
       </div>
 
       <section className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-medium">Page {page}</h2>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 dark:text-gray-400">
+                Media:
+              </label>
+              <div className="relative min-w-[200px]" ref={mediaDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsMediaDropdownOpen(!isMediaDropdownOpen)}
+                  disabled={isMediaLoading}
+                  className="w-full flex items-center justify-between border border-gray-300 dark:border-gray-700 rounded px-3 py-1.5 bg-white dark:bg-gray-800 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="truncate">
+                    {isMediaLoading ? "Loading media..." : (catalogueMediaFilter === "all" ? "All Media" : catalogueMediaFilter)}
+                  </span>
+                  {isMediaLoading ? (
+                    <div className="h-4 w-4 border-2 border-gray-300 border-t-gray-600 dark:border-gray-600 dark:border-t-gray-400 rounded-full animate-spin" />
+                  ) : (
+                    <ChevronDown className={`h-4 w-4 flex-shrink-0 transition-transform ${isMediaDropdownOpen ? "rotate-180" : ""}`} />
+                  )}
+                </button>
+                {isMediaDropdownOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow-lg max-h-60 overflow-hidden flex flex-col">
+                    <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+                      <input
+                        type="text"
+                        value={mediaSearchQuery}
+                        onChange={(e) => setMediaSearchQuery(e.target.value)}
+                        placeholder="Search media..."
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-500"
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="overflow-y-auto max-h-48">
+                      {isMediaLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="h-6 w-6 border-2 border-gray-300 border-t-gray-600 dark:border-gray-600 dark:border-t-gray-400 rounded-full animate-spin" />
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Loading media...</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCatalogueMediaFilter("all");
+                              setMediaSearchQuery("");
+                              setIsMediaDropdownOpen(false);
+                              setPage(1);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                              catalogueMediaFilter === "all"
+                                ? "bg-gray-200 dark:bg-gray-700 font-medium"
+                                : ""
+                            }`}
+                          >
+                            All Media
+                          </button>
+                          {availableMedia
+                            .filter((media) =>
+                              media.toLowerCase().includes(mediaSearchQuery.toLowerCase())
+                            )
+                            .map((media) => (
+                              <button
+                                key={media}
+                                type="button"
+                                onClick={() => {
+                                  setCatalogueMediaFilter(media);
+                                  setMediaSearchQuery("");
+                                  setIsMediaDropdownOpen(false);
+                                  setPage(1);
+                                }}
+                                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors truncate ${
+                                  catalogueMediaFilter === media
+                                    ? "bg-gray-200 dark:bg-gray-700 font-medium"
+                                    : ""
+                                }`}
+                              >
+                                {media}
+                              </button>
+                            ))}
+                          {availableMedia.filter((media) =>
+                            media.toLowerCase().includes(mediaSearchQuery.toLowerCase())
+                          ).length === 0 && mediaSearchQuery && (
+                            <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+                              No media found matching &quot;{mediaSearchQuery}&quot;
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-gray-600 dark:text-gray-400">
-              Showing:
-            </span>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(
-                  Number(e.target.value) as 20 | 40 | 60 | 80 | 100
-                );
-                setPage(1);
-              }}
-              className="border border-gray-300 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-800 text-sm"
-            >
-              <option value={20}>20</option>
-              <option value={40}>40</option>
-              <option value={60}>60</option>
-              <option value={80}>80</option>
-              <option value={100}>100</option>
-            </select>
-            <span className="text-gray-600 dark:text-gray-400">
-              characters
-            </span>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-gray-600 dark:text-gray-400">
+                Showing:
+              </span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(
+                    Number(e.target.value) as 20 | 40 | 60 | 80 | 100
+                  );
+                  setPage(1);
+                }}
+                className="border border-gray-300 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-800 text-sm"
+              >
+                <option value={20}>20</option>
+                <option value={40}>40</option>
+                <option value={60}>60</option>
+                <option value={80}>80</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="text-gray-600 dark:text-gray-400">
+                characters
+              </span>
+            </div>
           </div>
 
-          <PaginationControls
-            page={page}
-            hasMore={hasMore}
-            isLoading={catalogueLoading}
-            onPrevious={() => setPage((p) => Math.max(1, p - 1))}
-            onNext={() => setPage((p) => p + 1)}
-            showPageInfo={false}
-          />
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-medium">Page {page}</h2>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <label className="text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                  Go to page:
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={pageInput}
+                  onChange={(e) => setPageInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const pageNum = parseInt(pageInput, 10);
+                      if (pageNum >= 1) {
+                        setPage(pageNum);
+                        setPageInput("");
+                      }
+                    }
+                  }}
+                  placeholder={String(page)}
+                  className="w-20 border border-gray-300 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-800 text-sm"
+                />
+                <button
+                  onClick={() => {
+                    const pageNum = parseInt(pageInput, 10);
+                    if (pageNum >= 1) {
+                      setPage(pageNum);
+                      setPageInput("");
+                    }
+                  }}
+                  disabled={!pageInput || parseInt(pageInput, 10) < 1}
+                  className="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Go
+                </button>
+              </div>
+
+              <PaginationControls
+                page={page}
+                hasMore={hasMore}
+                isLoading={catalogueLoading}
+                onPrevious={() => setPage((p) => Math.max(1, p - 1))}
+                onNext={() => setPage((p) => p + 1)}
+                showPageInfo={false}
+              />
+            </div>
+          </div>
         </div>
         
         {catalogueError && (
@@ -187,37 +517,83 @@ import PaginationControls from "./components/pagination";
           }`}
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {catalogue.map((c, index) => (
-              <div
-                key={`${c.name}-${index}`}
-                className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 transform transition-transform duration-200 hover:scale-105 hover:shadow-md"
-              >
-                {c.image && (
-                  <div className="relative w-full h-64">
-                    <Image
-                      src={c.image}
-                      alt={c.name}
-                      fill
-                      sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"
-                      className="object-cover rounded-md"
-                    />
+            {catalogue.map((c, index) => {
+              const isFavorited = favoriteIds.has(c.id);
+              const canAddFavorite = user && favoriteCount < 5;
+              const listCount = characterListCounts.get(c.id) || 0;
+              const isInList = listCount > 0;
+              return (
+                <div
+                  key={`${c.name}-${index}`}
+                  className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 transform transition-transform duration-200 hover:scale-105 hover:shadow-md relative"
+                >
+                  {c.image && (
+                    <div className="relative w-full h-64">
+                      <Image
+                        src={c.image}
+                        alt={c.name}
+                        fill
+                        sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"
+                        className="object-cover rounded-md"
+                      />
+                    </div>
+                  )}
+                     <div className="flex-1 space-y-1">
+                       <div className="font-semibold">{c.name.replace(/["']/g, "")}</div>
+                       {c.mediaTitle && (
+                         <div className="text-xs text-gray-600 dark:text-gray-400">
+                           {c.mediaTitle}
+                         </div>
+                       )}
+                     </div>
+                    {user && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => toggleFavorite(c.id, c.name)}
+                          disabled={isAddingFavorite || (!isFavorited && !canAddFavorite)}
+                          className={`p-2 rounded-full transition-all duration-300 hover:scale-110 ${
+                            isFavorited
+                              ? "bg-red-500 text-white hover:bg-red-600"
+                              : canAddFavorite
+                              ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                              : "bg-gray-300 dark:bg-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50"
+                          }`}
+                          title={
+                            isFavorited
+                              ? "Remove from favorites"
+                              : canAddFavorite
+                              ? "Add to favorites"
+                              : "Favorite limit reached (5/5)"
+                          }
+                        >
+                          <Heart
+                            className={`h-4 w-4 transition-all duration-300 ${isFavorited ? "fill-current" : ""}`}
+                          />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedCharacterForList({ id: c.id, name: c.name });
+                            setIsAddToListModalOpen(true);
+                          }}
+                          className={`p-2 rounded-full transition-all duration-300 hover:scale-110 relative ${
+                            isInList
+                              ? "bg-blue-600 text-white hover:bg-blue-700"
+                              : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                          }`}
+                          title={isInList ? `In ${listCount} list${listCount > 1 ? "s" : ""}` : "Add to list"}
+                        >
+                          <ListPlus className="h-4 w-4" />
+                          {isInList && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                              {listCount}
+                            </span>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-                <div className="flex-1 space-y-1">
-                  <div className="font-semibold">{c.name}</div>
-                  {c.mediaTitle && (
-                    <div className="text-xs text-gray-600 dark:text-gray-400">
-                      {c.mediaTitle}
-                    </div>
-                  )}
-                  {typeof c.popularity === "number" && (
-                    <div className="text-xs text-gray-500 dark:text-gray-500">
-                      Popularity: {c.popularity}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+                );
+              })}
           </div>
         </div>
       </section>
@@ -229,25 +605,36 @@ import PaginationControls from "./components/pagination";
               <h2 className="text-lg font-semibold">Search Characters</h2>
               <button
                 onClick={() => setIsSearchOpen(false)}
-                className="text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                className="p-2 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                title="Close"
+                aria-label="Close"
               >
-                Close
+                <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-3">
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search for a character by name"
-                className="border border-gray-300 dark:border-gray-700 p-2 w-full rounded bg-white dark:bg-gray-800 text-sm"
-              />
-              <button
-                onClick={searchCharactersInDb}
-                className="w-full bg-purple-600 text-white px-3 py-2 rounded text-sm font-medium hover:bg-purple-700 transition-colors"
-              >
-                Search
-              </button>
+              <div className="flex gap-2">
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search for a character by name"
+                  className="flex-1 border border-gray-300 dark:border-gray-700 p-2 rounded bg-white dark:bg-gray-800 text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      searchCharactersInDb();
+                    }
+                  }}
+                />
+                <button
+                  onClick={searchCharactersInDb}
+                  className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  title="Search"
+                  aria-label="Search"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3 max-h-80 overflow-y-auto">
@@ -257,42 +644,102 @@ import PaginationControls from "./components/pagination";
                 </p>
               )}
 
-              {results.map((c) => (
-                <div
-                  key={c.id ?? c.name}
-                  className="border border-gray-200 dark:border-gray-800 rounded p-3 flex gap-3 items-center"
-                >
-                  {c.image && (
-                    <div className="relative w-12 h-12 flex-shrink-0">
-                      <Image
-                        src={c.image}
-                        alt={c.name}
-                        fill
-                        sizes="48px"
-                        className="rounded object-cover"
-                      />
-                    </div>
-                  )}
-
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{c.name}</div>
-                    {c.mediaTitle && (
-                      <div className="text-xs text-gray-600 dark:text-gray-400">
-                        {c.mediaTitle}
+              {results.map((c) => {
+                if (!c.id) return null;
+                const isFavorited = favoriteIds.has(c.id);
+                const canAddFavorite = user && favoriteCount < 5;
+                const listCount = characterListCounts.get(c.id) || 0;
+                const isInList = listCount > 0;
+                return (
+                  <div
+                    key={c.id ?? c.name}
+                    className="border border-gray-200 dark:border-gray-800 rounded p-3 flex gap-3 items-center relative"
+                  >
+                    {c.image && (
+                      <div className="relative w-12 h-12 flex-shrink-0">
+                        <Image
+                          src={c.image}
+                          alt={c.name}
+                          fill
+                          sizes="48px"
+                          className="rounded object-cover"
+                        />
                       </div>
                     )}
-                    {typeof c.popularity === "number" && (
-                      <div className="text-xs text-gray-500 dark:text-gray-500">
-                        Popularity: {c.popularity}
+
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">{c.name}</div>
+                      {c.mediaTitle && (
+                        <div className="text-xs text-gray-600 dark:text-gray-400">
+                          {c.mediaTitle}
+                        </div>
+                      )}
+                    </div>
+                    {user && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => toggleFavorite(c.id!, c.name)}
+                          disabled={isAddingFavorite || (!isFavorited && !canAddFavorite)}
+                          className={`p-1.5 rounded-full transition-all duration-300 hover:scale-110 ${
+                            isFavorited
+                              ? "bg-red-500 text-white hover:bg-red-600"
+                              : canAddFavorite
+                              ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                              : "bg-gray-300 dark:bg-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-50"
+                          }`}
+                          title={
+                            isFavorited
+                              ? "Remove from favorites"
+                              : canAddFavorite
+                              ? "Add to favorites"
+                              : "Favorite limit reached (5/5)"
+                          }
+                        >
+                          <Heart
+                            className={`h-3 w-3 transition-all duration-300 ${isFavorited ? "fill-current" : ""}`}
+                          />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedCharacterForList({ id: c.id!, name: c.name });
+                            setIsAddToListModalOpen(true);
+                          }}
+                          className={`p-1.5 rounded-full transition-all duration-300 hover:scale-110 relative ${
+                            isInList
+                              ? "bg-blue-600 text-white hover:bg-blue-700"
+                              : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                          }`}
+                          title={isInList ? `In ${listCount} list${listCount > 1 ? "s" : ""}` : "Add to list"}
+                        >
+                          <ListPlus className="h-3 w-3" />
+                          {isInList && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full h-3.5 w-3.5 flex items-center justify-center">
+                              {listCount}
+                            </span>
+                          )}
+                        </button>
                       </div>
                     )}
                   </div>
-                </div>
-                
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
+      )}
+
+      {user && selectedCharacterForList && (
+        <AddToListModal
+          isOpen={isAddToListModalOpen}
+          onClose={() => {
+            setIsAddToListModalOpen(false);
+            setSelectedCharacterForList(null);
+          }}
+          onSuccess={refreshListCounts}
+          user={user}
+          characterId={selectedCharacterForList.id}
+          characterName={selectedCharacterForList.name}
+        />
       )}
       
       <PaginationControls

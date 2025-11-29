@@ -5,14 +5,20 @@ import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, X, Edit2, Plus, UserPlus, Star, List, Trash2, Users } from "lucide-react";
 import Image from "next/image";
+import Flag from "react-world-flags";
 import { ProfileEditModal } from "@/components/profile-edit-modal";
+import { CreateListModal } from "@/components/create-list-modal";
+import { AddToListModal } from "@/components/add-to-list-modal";
+import { DeleteListModal } from "@/components/delete-list-modal";
+import { RemoveFavoriteModal } from "@/components/remove-favorite-modal";
 import { extractProfileData, type ProfileData } from "@/lib/profile-utils";
+import { getGeolocation } from "@/lib/geolocation";
 
 type FavoriteCharacter = {
   id: string;
-  character_id: number;
+  character_id: string;
   character_name: string;
   character_image: string | null;
   character_media_title: string | null;
@@ -25,6 +31,15 @@ type UserList = {
   description: string | null;
   created_at: string;
   updated_at: string;
+  character_count: number;
+};
+
+type ListItem = {
+  id: string;
+  character_id: string;
+  character_name: string;
+  character_image: string | null;
+  character_media_title: string | null;
 };
 
 export default function ProfilePage() {
@@ -32,14 +47,35 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState<FavoriteCharacter[]>([]);
   const [lists, setLists] = useState<UserList[]>([]);
+  const [listItems, setListItems] = useState<Map<string, ListItem[]>>(
+    new Map()
+  );
   const [favoritesLoading, setFavoritesLoading] = useState(true);
   const [listsLoading, setListsLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCreateListModalOpen, setIsCreateListModalOpen] = useState(false);
+  const [isAddToListModalOpen, setIsAddToListModalOpen] = useState(false);
+  const [isDeleteListModalOpen, setIsDeleteListModalOpen] = useState(false);
+  const [isRemoveFavoriteModalOpen, setIsRemoveFavoriteModalOpen] = useState(false);
+  const [favoriteToRemove, setFavoriteToRemove] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [listToDelete, setListToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [selectedCharacterForList, setSelectedCharacterForList] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [profileData, setProfileData] = useState<ProfileData>({
     displayName: null,
     gender: null,
     profilePicture: null,
     userNumber: null,
+    countryCode: null,
+    location: null,
   });
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -48,16 +84,81 @@ export default function ProfilePage() {
   useEffect(() => {
     if (hasCheckedAuth.current) return;
     
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        router.push("/");
-        return;
+    async function fetchAndUpdateLocation(userToSet: User): Promise<User> {
+      if (userToSet.user_metadata?.country_code) {
+        console.log("User already has country code, skipping geolocation fetch");
+        return userToSet;
       }
-      setUser(session.user);
-      setProfileData(extractProfileData(session.user));
+      
+      const needsLocation = !userToSet.user_metadata?.location;
+      const needsCountryCode = !userToSet.user_metadata?.country_code;
+      
+      if (!needsLocation && !needsCountryCode) {
+        return userToSet;
+      }
+      
+      try {
+        const geoData = await getGeolocation();
+        console.log("Geolocation data:", geoData);
+        
+        if (!geoData.country || !geoData.countryCode) {
+          return userToSet;
+        }
+        
+        const updatedMetadata = { ...userToSet.user_metadata };
+        if (needsLocation) updatedMetadata.location = geoData.country;
+        if (needsCountryCode) updatedMetadata.country_code = geoData.countryCode;
+        
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: updatedMetadata,
+        });
+        
+        if (updateError) {
+          console.error("Error updating user location/countryCode:", updateError);
+          return userToSet;
+        }
+        
+        // Refresh session to ensure metadata is updated
+        await supabase.auth.refreshSession();
+        
+        // Wait a moment for the refresh to propagate
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        const { data: { user: updatedUser } } = await supabase.auth.getUser();
+        
+        if (updatedUser) {
+          console.log("Updated user metadata:", updatedUser.user_metadata);
+          console.log("Extracted profile data:", extractProfileData(updatedUser));
+          return updatedUser;
+        }
+        
+        return userToSet;
+      } catch (error) {
+        console.error("Error setting location:", error);
+        return userToSet;
+      }
+    }
+    
+    async function loadUserSession(): Promise<User | null> {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return null;
+      }
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const userToSet = currentUser || session.user;
+      if (!userToSet) {
+        return null;
+      }
+      
+      const finalUser = await fetchAndUpdateLocation(userToSet);
+      setUser(finalUser);
+      setProfileData(extractProfileData(finalUser));
       setLoading(false);
       hasCheckedAuth.current = true;
-    });
+      return finalUser;
+    }
+    
+    loadUserSession();
 
     const {
       data: { subscription },
@@ -67,13 +168,32 @@ export default function ProfilePage() {
         return;
       }
       if (event === "USER_UPDATED" && session) {
-        setUser(session.user);
-        setProfileData(extractProfileData(session.user));
+        // Refresh session to get latest metadata
+        supabase.auth.refreshSession().then(() => {
+          supabase.auth.getUser().then(({ data: { user: updatedUser } }) => {
+            if (updatedUser) {
+              setUser(updatedUser);
+              setProfileData(extractProfileData(updatedUser));
+            } else if (session.user) {
+              setUser(session.user);
+              setProfileData(extractProfileData(session.user));
+            }
+          });
+        });
       } else if (session && !hasCheckedAuth.current) {
-        setUser(session.user);
-        setProfileData(extractProfileData(session.user));
-        setLoading(false);
-        hasCheckedAuth.current = true;
+        async function loadUserForSession() {
+          const { data: { user: sessionUser } } = await supabase.auth.getUser();
+          if (sessionUser) {
+            setUser(sessionUser);
+            setProfileData(extractProfileData(sessionUser));
+          } else if (session?.user) {
+            setUser(session.user);
+            setProfileData(extractProfileData(session.user));
+          }
+          setLoading(false);
+          hasCheckedAuth.current = true;
+        }
+        loadUserForSession();
       }
     });
 
@@ -101,7 +221,7 @@ export default function ProfilePage() {
 
       const { data: charactersData } = await supabase
         .from("characters")
-        .select("id, name, image_url, media_title")
+        .select("id, name, image, media")
         .in("id", characterIds);
 
       const characterMap = new Map(
@@ -114,8 +234,8 @@ export default function ProfilePage() {
           id: fav.id,
           character_id: fav.character_id,
           character_name: character?.name || "Unknown",
-          character_image: character?.image_url || null,
-          character_media_title: character?.media_title || null,
+          character_image: character?.image || null,
+          character_media_title: character?.media || null,
           created_at: fav.created_at,
         };
       });
@@ -126,18 +246,245 @@ export default function ProfilePage() {
 
     async function loadLists() {
       setListsLoading(true);
-      const { data } = await supabase
+      const { data: listsData } = await supabase
         .from("user_lists")
         .select("*")
         .order("updated_at", { ascending: false });
 
-      setLists(data || []);
+      if (!listsData || listsData.length === 0) {
+        setLists([]);
+        setListItems(new Map());
+        setListsLoading(false);
+        return;
+      }
+
+      const listIds = listsData.map((list) => list.id);
+
+      const { data: itemsData } = await supabase
+        .from("list_items")
+        .select("id, list_id, character_id")
+        .in("list_id", listIds);
+
+        const characterIds = new Set<string>();
+        (itemsData || []).forEach((item) => {
+          if (item.character_id) {
+            characterIds.add(item.character_id);
+          }
+        });
+
+        const { data: charactersData } = await supabase
+          .from("characters")
+          .select("id, name, image, media")
+          .in("id", Array.from(characterIds));
+
+      const characterMap = new Map(
+        (charactersData || []).map((char) => [char.id, char])
+      );
+
+      const itemsMap = new Map<string, ListItem[]>();
+      const countMap = new Map<string, number>();
+
+      (itemsData || []).forEach((item) => {
+        if (!item.list_id || !item.character_id) return;
+
+        const character = characterMap.get(item.character_id);
+        if (!character) return;
+
+        const listItem: ListItem = {
+          id: item.id,
+          character_id: item.character_id,
+          character_name: character.name,
+          character_image: character.image,
+          character_media_title: character.media,
+        };
+
+        if (!itemsMap.has(item.list_id)) {
+          itemsMap.set(item.list_id, []);
+        }
+        itemsMap.get(item.list_id)!.push(listItem);
+
+        countMap.set(item.list_id, (countMap.get(item.list_id) || 0) + 1);
+      });
+
+      setListItems(itemsMap);
+
+      const mapped: UserList[] = listsData.map((list) => ({
+        id: list.id,
+        name: list.name,
+        description: list.description,
+        created_at: list.created_at,
+        updated_at: list.updated_at,
+        character_count: countMap.get(list.id) || 0,
+      }));
+
+      setLists(mapped);
       setListsLoading(false);
     }
 
     loadFavorites();
     loadLists();
   }, [user, supabase]);
+
+  async function removeFavorite(favoriteId: string) {
+    const { error } = await supabase
+      .from("favorite_characters")
+      .delete()
+      .eq("id", favoriteId);
+
+    if (error) {
+      console.error("Error removing favorite:", error);
+      alert("Failed to remove favorite");
+      return;
+    }
+
+    setFavorites((prev) => prev.filter((fav) => fav.id !== favoriteId));
+  }
+
+
+  async function deleteList(listId: string) {
+    const { error } = await supabase
+      .from("user_lists")
+      .delete()
+      .eq("id", listId);
+
+    if (error) {
+      console.error("Error deleting list:", error);
+      alert("Failed to delete list");
+      return;
+    }
+
+    setLists((prev) => prev.filter((list) => list.id !== listId));
+    setListItems((prev) => {
+      const next = new Map(prev);
+      next.delete(listId);
+      return next;
+    });
+  }
+
+  function handleDeleteClick(listId: string, listName: string) {
+    setListToDelete({ id: listId, name: listName });
+    setIsDeleteListModalOpen(true);
+  }
+
+  function handleRemoveFavoriteClick(favoriteId: string, characterName: string) {
+    setFavoriteToRemove({ id: favoriteId, name: characterName });
+    setIsRemoveFavoriteModalOpen(true);
+  }
+
+  function handleListNameClick(listId: string) {
+    router.push(`/profile/lists/${listId}`);
+  }
+
+  function refreshData() {
+    if (!user) return;
+
+    async function refresh() {
+      const { data: favoritesData } = await supabase
+        .from("favorite_characters")
+        .select("id, character_id, created_at")
+        .order("created_at", { ascending: false });
+
+      if (favoritesData && favoritesData.length > 0) {
+        const characterIds = favoritesData.map((fav) => fav.character_id);
+        const { data: charactersData } = await supabase
+          .from("characters")
+          .select("id, name, image, media")
+          .in("id", characterIds);
+
+        const characterMap = new Map(
+          (charactersData || []).map((char) => [char.id, char])
+        );
+
+        const mapped = favoritesData.map((fav) => {
+          const character = characterMap.get(fav.character_id);
+          return {
+            id: fav.id,
+            character_id: fav.character_id,
+            character_name: character?.name || "Unknown",
+            character_image: character?.image || null,
+            character_media_title: character?.media || null,
+            created_at: fav.created_at,
+          };
+        });
+
+        setFavorites(mapped);
+      } else {
+        setFavorites([]);
+      }
+
+      const { data: listsData } = await supabase
+        .from("user_lists")
+        .select("*")
+        .order("updated_at", { ascending: false });
+
+      if (listsData && listsData.length > 0) {
+        const listIds = listsData.map((list) => list.id);
+        const { data: itemsData } = await supabase
+          .from("list_items")
+          .select("id, list_id, character_id")
+          .in("list_id", listIds);
+
+        const characterIds = new Set<string>();
+        (itemsData || []).forEach((item) => {
+          if (item.character_id) {
+            characterIds.add(item.character_id);
+          }
+        });
+
+        const { data: charactersData } = await supabase
+          .from("characters")
+          .select("id, name, image, media")
+          .in("id", Array.from(characterIds));
+
+        const characterMap = new Map(
+          (charactersData || []).map((char) => [char.id, char])
+        );
+
+        const itemsMap = new Map<string, ListItem[]>();
+        const countMap = new Map<string, number>();
+
+        (itemsData || []).forEach((item) => {
+          if (!item.list_id || !item.character_id) return;
+
+          const character = characterMap.get(item.character_id);
+          if (!character) return;
+
+          const listItem: ListItem = {
+            id: item.id,
+            character_id: item.character_id,
+            character_name: character.name,
+            character_image: character.image,
+            character_media_title: character.media,
+          };
+
+          if (!itemsMap.has(item.list_id)) {
+            itemsMap.set(item.list_id, []);
+          }
+          itemsMap.get(item.list_id)!.push(listItem);
+
+          countMap.set(item.list_id, (countMap.get(item.list_id) || 0) + 1);
+        });
+
+        setListItems(itemsMap);
+
+        const mapped: UserList[] = listsData.map((list) => ({
+          id: list.id,
+          name: list.name,
+          description: list.description,
+          created_at: list.created_at,
+          updated_at: list.updated_at,
+          character_count: countMap.get(list.id) || 0,
+        }));
+
+        setLists(mapped);
+      } else {
+        setLists([]);
+        setListItems(new Map());
+      }
+    }
+
+    refresh();
+  }
 
   if (loading) {
     return (
@@ -156,17 +503,22 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen p-8 bg-white dark:bg-black">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <Link href="/" className="inline-block">
+    <main className="min-h-screen p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <button
+          onClick={() => router.back()}
+          className="fixed top-24 left-8"
+          title="Go back"
+          aria-label="Go back"
+        >
           <ArrowLeft className="h-10 w-10 transition-transform duration-200 hover:scale-110" />
-        </Link>
+        </button>
 
         <div className="space-y-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               {profileData.profilePicture ? (
-                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700">
+                <div className="relative w-24 h-24 rounded-full overflow-hidden transition-transform duration-300 hover:scale-110 cursor-pointer">
                   <Image
                     src={profileData.profilePicture}
                     alt="Profile picture"
@@ -174,51 +526,82 @@ export default function ProfilePage() {
                     className="object-cover"
                     unoptimized
                     onError={(e) => {
+                      // Optionally, report the error to an error tracking service here.
                       e.currentTarget.style.display = "none";
                     }}
                   />
                 </div>
               ) : (
-                <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center transition-transform duration-300 hover:scale-110 cursor-pointer">
                   <span className="text-gray-400 text-2xl">👤</span>
                 </div>
               )}
               <div>
-                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                   {profileData.displayName || user.email}
                   {profileData.displayName && profileData.userNumber && (
-                    <span className="text-2xl text-gray-500 dark:text-gray-400 font-normal ml-2">
+                    <span className="text-2xl text-gray-500 dark:text-gray-400 font-normal">
                       #{profileData.userNumber}
                     </span>
                   )}
+                  {profileData.countryCode ? (
+                    <Flag 
+                      code={profileData.countryCode.toUpperCase()} 
+                      style={{ width: "24px", height: "18px" }}
+                      className="inline-block"
+                      title={profileData.location || ""}
+                    />
+                  ) : null}
                 </h1>
-                <div className="space-y-2">
-                  <p className="text-lg text-gray-600 dark:text-gray-400">
-                    <span className="font-semibold">Email:</span> {user.email}
+                
+                {profileData.gender && profileData.gender.trim() !== "" && (
+                  <p className="text-sm text-gray-500 dark:text-gray-500">
+                    <span className="font-semibold">Gender:</span>{" "}
+                    {profileData.gender.charAt(0).toUpperCase() +
+                      profileData.gender.slice(1).replace(/-/g, " ")}
                   </p>
-                  {profileData.gender && profileData.gender.trim() !== "" && (
-                    <p className="text-sm text-gray-500 dark:text-gray-500">
-                      <span className="font-semibold">Gender:</span>{" "}
-                      {profileData.gender.charAt(0).toUpperCase() +
-                        profileData.gender.slice(1).replace(/-/g, " ")}
-                    </p>
-                  )}
-                </div>
+                )}
+                <p className="text-sm text-gray-500 dark:text-gray-500">
+                  <span className="font-semibold">Joined:</span>{" "}
+                  {user.created_at
+                    ? new Date(user.created_at).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
+                    : "Loading..."}
+                </p>
               </div>
             </div>
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+              className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              title="Edit Profile"
             >
-              Edit Profile
+              <Edit2 className="h-5 w-5" />
             </button>
           </div>
 
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Star className="h-6 w-6" />
                 Favorite Characters
               </h2>
+              <div className="flex items-center">
+                {favorites.length > 0 && (
+                  <span className="text-sm text-gray-500 dark:text-gray-400 mr-3">
+                    ({favorites.length}/5)
+                  </span>
+                )}
+                <Link
+                  href="/characters"
+                  className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  title="Go to character catalogue"
+                >
+                  <UserPlus className="h-5 w-5" />
+                </Link>
+              </div>
             </div>
 
             {favoritesLoading ? (
@@ -228,35 +611,36 @@ export default function ProfilePage() {
             ) : favorites.length === 0 ? (
               <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-8 text-center">
                 <p className="text-gray-600 dark:text-gray-400">
-                  No favorite characters yet. Start adding some from the{" "}
-                  <Link
-                    href="/characters"
-                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    characters page
-                  </Link>
-                  !
+                  No favorite characters yet.
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="flex justify-center flex-wrap gap-4">
                 {favorites.map((fav) => (
                   <div
                     key={fav.id}
-                    className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 hover:shadow-md transition-shadow"
+                    className="border border-gray-200 dark:border-gray-800 rounded-lg p-4 flex flex-col gap-3 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 relative"
+                    style={{ width: '180px' }}
                   >
+                    <button
+                      onClick={() => handleRemoveFavoriteClick(fav.id, fav.character_name)}
+                      className="absolute top-2 right-2 z-10 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                      title="Remove from favorites"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                     {fav.character_image && (
-                      <div className="relative w-full h-48">
+                      <div className="relative w-full h-48 rounded-md overflow-hidden">
                         <Image
                           src={fav.character_image}
                           alt={fav.character_name}
                           fill
-                          sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"
-                          className="object-cover rounded-md"
+                          sizes="(min-width: 1024px) 20vw, 25vw"
+                          className="object-cover transition-transform duration-300 hover:scale-110"
                         />
                       </div>
                     )}
-                    <div className="space-y-1">
+                    <div className="space-y-1 text-center">
                       <div className="font-semibold text-sm">
                         {fav.character_name}
                       </div>
@@ -274,9 +658,29 @@ export default function ProfilePage() {
 
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <List className="h-6 w-6" />
                 My Lists
               </h2>
+              <div className="flex items-center">
+                {lists.length > 0 && (
+                  <span className="text-sm text-gray-500 dark:text-gray-400 mr-3">
+                    ({lists.length}/3)
+                  </span>
+                )}
+                <button
+                  onClick={() => setIsCreateListModalOpen(true)}
+                  disabled={lists.length >= 3}
+                  className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  title={
+                    lists.length >= 3
+                      ? "You can only have 3 lists. Delete one first."
+                      : "Create a new list"
+                  }
+                >
+                  <Plus className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             {listsLoading ? (
@@ -285,41 +689,110 @@ export default function ProfilePage() {
               </div>
             ) : lists.length === 0 ? (
               <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-8 text-center">
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                <p className="text-gray-600 dark:text-gray-400">
                   No lists created yet.
                 </p>
-                <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm">
-                  Create Your First List
-                </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {lists.map((list) => (
-                  <div
-                    key={list.id}
-                    className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 hover:shadow-md transition-shadow"
-                  >
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      {list.name}
-                    </h3>
-                    {list.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                        {list.description}
-                      </p>
-                    )}
-                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
-                      <span>
-                        Created: {new Date(list.created_at).toLocaleDateString()}
-                      </span>
-                      <span>
-                        Updated: {new Date(list.updated_at).toLocaleDateString()}
-                      </span>
+              <div className="flex justify-center flex-wrap gap-6">
+                {lists.map((list) => {
+                  const items = listItems.get(list.id) || [];
+                  return (
+                    <div
+                      key={list.id}
+                      className="border border-gray-200 dark:border-gray-800 rounded-lg p-6 flex flex-col gap-4 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 bg-white dark:bg-gray-900"
+                      style={{ width: '100%', maxWidth: '350px' }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <h3
+                          className="text-xl font-semibold text-gray-900 dark:text-white cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          onClick={() => handleListNameClick(list.id)}
+                          title="Click to view and edit list"
+                        >
+                          {list.name}
+                        </h3>
+                        <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          ({list.character_count}/10)
+                        </span>
+                      </div>
+
+                      {items.length === 0 ? (
+                        <div className="flex items-center justify-center h-64 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+                          <p className="text-sm text-gray-500 dark:text-gray-500 italic">
+                            No characters yet
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                          {items.slice(0, 4).map((item) => (
+                            <div
+                              key={item.id}
+                              className="rounded-lg overflow-hidden hover:shadow-lg hover:scale-110 transition-all duration-300 cursor-pointer aspect-square"
+                            >
+                              {item.character_image ? (
+                                <div className="relative w-full h-full">
+                                  <Image
+                                    src={item.character_image}
+                                    alt={item.character_name}
+                                    fill
+                                    sizes="(min-width: 1024px) 50vw, 50vw"
+                                    className="object-cover transition-transform duration-300 hover:scale-110"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                  <span className="text-xs text-gray-400">?</span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {list.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                          {list.description}
+                        </p>
+                      )}
+
+                      <div className="mt-auto pt-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3">
+                        <span className="text-xs text-gray-500 dark:text-gray-500">
+                          Created: {new Date(list.created_at).toLocaleDateString()}
+                        </span>
+                        <div className="flex gap-2 flex-shrink-0">
+                          {list.character_count >= 10 ? (
+                            <button
+                              disabled
+                              className="p-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                              title="List is full (10/10)"
+                            >
+                              <Plus className="h-5 w-5" />
+                            </button>
+                          ) : (
+                            <Link
+                              href="/characters"
+                              className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                              title="Go to characters page to add characters"
+                            >
+                              <Plus className="h-5 w-5" />
+                            </Link>
+                          )}
+                          <button
+                            onClick={() => handleDeleteClick(list.id, list.name)}
+                            className="p-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                            title="Delete list"
+                          >
+                            <Trash2 className="h-5 w-5 text-red-600 dark:text-red-500" />
+                          </button>
+                        </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
-            )}
-          </section>
+          )}
+        </section>
         </div>
       </div>
 
@@ -330,15 +803,84 @@ export default function ProfilePage() {
         currentGender={profileData.gender}
         currentProfilePicture={profileData.profilePicture}
         onUpdate={async () => {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (session?.user) {
-            setUser(session.user);
-            setProfileData(extractProfileData(session.user));
+          // Wait a bit for the session to refresh
+          await new Promise(resolve => setTimeout(resolve, 100));
+          const { data: { user: updatedUser } } = await supabase.auth.getUser();
+          if (updatedUser) {
+            setUser(updatedUser);
+            setProfileData(extractProfileData(updatedUser));
+          } else {
+            // Fallback to session if getUser fails
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+            if (session?.user) {
+              setUser(session.user);
+              setProfileData(extractProfileData(session.user));
+            }
           }
         }}
       />
+
+      {user && (
+        <>
+          <CreateListModal
+            isOpen={isCreateListModalOpen}
+            onClose={() => setIsCreateListModalOpen(false)}
+            onSuccess={refreshData}
+            user={user}
+            currentListCount={lists.length}
+          />
+
+          {selectedCharacterForList && (
+            <AddToListModal
+              isOpen={isAddToListModalOpen}
+              onClose={() => {
+                setIsAddToListModalOpen(false);
+                setSelectedCharacterForList(null);
+              }}
+              onSuccess={refreshData}
+              user={user}
+              characterId={selectedCharacterForList.id}
+              characterName={selectedCharacterForList.name}
+            />
+          )}
+
+          {listToDelete && (
+            <DeleteListModal
+              isOpen={isDeleteListModalOpen}
+              onClose={() => {
+                setIsDeleteListModalOpen(false);
+                setListToDelete(null);
+              }}
+              onConfirm={() => {
+                if (listToDelete) {
+                  deleteList(listToDelete.id);
+                }
+              }}
+              listName={listToDelete.name}
+            />
+          )}
+
+          {favoriteToRemove && (
+            <RemoveFavoriteModal
+              isOpen={isRemoveFavoriteModalOpen}
+              onClose={() => {
+                setIsRemoveFavoriteModalOpen(false);
+                setFavoriteToRemove(null);
+              }}
+              onConfirm={() => {
+                if (favoriteToRemove) {
+                  removeFavorite(favoriteToRemove.id);
+                }
+              }}
+              characterName={favoriteToRemove.name}
+            />
+          )}
+
+        </>
+      )}
     </main>
   );
 }
+
