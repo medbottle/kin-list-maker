@@ -14,7 +14,7 @@
     "sync:all": "node scripts/sync-all-characters.mjs"
   },
   "dependencies": {
-    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.84.0",
     "dotenv": "^16.4.5",
     "lucide-react": "^0.555.0",
