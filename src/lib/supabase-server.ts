@@ -18,9 +18,6 @@ export async function createServerClient() {
               cookieStore.set(name, value, options)
             );
           } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
           }
         },
       },
@@ -28,5 +25,23 @@ export async function createServerClient() {
   );
 }
 
-// Keep backward compatible export for existing code
+export async function getUserDetails(userId: string) {
+  const supabase = await createServerClient();
+
+  const { data, error } = await supabase
+    .from("user_details_view")
+    .select(
+      "user_id, email, join_date, display_name, gender, country_code, user_number, subscribed, favorite_characters_count, lists_count, list_items_count"
+    )
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error fetching user details:", error);
+    throw error;
+  }
+
+  return data;
+}
+
 export const createServerClientInstance = createServerClient;
