@@ -209,6 +209,7 @@ export default function ProfilePage() {
       const { data: favoritesData } = await supabase
         .from("favorite_characters")
         .select("id, character_id, created_at")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (!favoritesData || favoritesData.length === 0) {
@@ -382,6 +383,7 @@ export default function ProfilePage() {
       const { data: favoritesData } = await supabase
         .from("favorite_characters")
         .select("id, character_id, created_at")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (favoritesData && favoritesData.length > 0) {
@@ -539,7 +541,7 @@ export default function ProfilePage() {
               <div>
                 <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                   {profileData.displayName || user.email}
-                  {profileData.displayName && profileData.userNumber && (
+                  {profileData.userNumber && (
                     <span className="text-2xl text-gray-500 dark:text-gray-400 font-normal">
                       #{profileData.userNumber}
                     </span>
