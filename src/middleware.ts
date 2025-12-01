@@ -43,7 +43,9 @@ export async function middleware(request: NextRequest) {
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    const res = NextResponse.redirect(url);
+    res.cookies.setAll(supabaseResponse.cookies.getAll());
+    return res;
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
