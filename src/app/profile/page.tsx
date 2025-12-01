@@ -88,13 +88,11 @@ export default function ProfilePage() {
       // Check if profile exists and has country_code
       const existingProfile = await getProfileData(supabase, userToSet.id);
       if (existingProfile?.countryCode) {
-        console.log("User already has country code, skipping geolocation fetch");
         return userToSet;
       }
       
       try {
         const geoData = await getGeolocation();
-        console.log("Geolocation data:", geoData);
         
         if (!geoData.country || !geoData.countryCode) {
           return userToSet;
