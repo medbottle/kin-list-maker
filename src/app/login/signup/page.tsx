@@ -19,7 +19,6 @@ export default function SignupPage() {
     if (error) {
       alert(error.message);
     } else {
-      alert("Account created! Please log in.");
       window.location.href = "/login";
     }
   }
