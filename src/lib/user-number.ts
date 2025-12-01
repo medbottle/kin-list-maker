@@ -6,7 +6,7 @@ export function generateUserNumber(userId: string): string {
     hash = hash & hash;
   }
   
-  const number = Math.abs(hash) % 10000;
-  return number.toString().padStart(4, '0');
+  const number = (Math.abs(hash) % 9000) + 1000;
+  return number.toString();
 }
 
