@@ -130,9 +130,16 @@ export function ProfileEditModal({
         profile_picture: profilePictureUrl || null,
       };
 
-      await supabase.auth.updateUser({
+      const { error: updateUserError } = await supabase.auth.updateUser({
         data: updatedMetadata,
       });
+
+      if (updateUserError) {
+        console.error("Error updating user metadata:", updateUserError);
+        alert(`Failed to update user metadata: ${updateUserError.message}`);
+        setLoading(false);
+        return;
+      }
 
 
       // Refresh session to ensure metadata is updated

@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
-    request,
+    request: { headers: request.headers },
   });
 
   const supabase = createServerClient(
@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({
-            request,
+            request: { headers: request.headers },
           });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -44,7 +44,9 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     const res = NextResponse.redirect(url);
-    res.cookies.setAll(supabaseResponse.cookies.getAll());
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      res.cookies.set(cookie.name, cookie.value, cookie);
+    });
     return res;
   }
 
