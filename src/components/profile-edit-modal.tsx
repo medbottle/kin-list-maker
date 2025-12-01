@@ -112,9 +112,26 @@ export function ProfileEditModal({
         profile_picture: profilePictureUrl || null,
       };
 
+      // Update user metadata
       const { error } = await supabase.auth.updateUser({
         data: updatedMetadata,
       });
+
+      // Also update profiles table
+      if (!error) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            display_name: displayName || null,
+            gender: gender || null,
+            profile_picture: profilePictureUrl || null,
+          })
+          .eq("id", user.id);
+
+        if (profileError) {
+          console.error("Failed to update profile table:", profileError);
+        }
+      }
 
       if (error) {
         console.error("Error updating profile:", error);
