@@ -1,11 +1,31 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export async function loadCharacterListCounts(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  userId?: string
 ): Promise<Map<string, number>> {
-  const { data: listItems } = await supabase
+  // If userId is provided, only count items from user's lists
+  let query = supabase
     .from("list_items")
-    .select("character_id");
+    .select("character_id, list_id");
+
+  if (userId) {
+    // Get user's list IDs first
+    const { data: userLists } = await supabase
+      .from("user_lists")
+      .select("id")
+      .eq("user_id", userId);
+
+    const listIds = userLists?.map(list => list.id) || [];
+    
+    if (listIds.length === 0) {
+      return new Map();
+    }
+
+    query = query.in("list_id", listIds);
+  }
+
+  const { data: listItems } = await query;
 
   const counts = new Map<string, number>();
   

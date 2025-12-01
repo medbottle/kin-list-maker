@@ -77,6 +77,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
               .from("profiles")
               .insert({
                 id: data.user.id,
+                email: data.user.email || "",
                 display_name: displayName.trim() || null,
                 user_number: userNumber,
                 country_code: countryCode,
@@ -89,6 +90,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
                 .from("profiles")
                 .upsert({
                   id: data.user.id,
+                  email: data.user.email || "",
                   display_name: displayName.trim() || null,
                   user_number: userNumber,
                   country_code: countryCode,

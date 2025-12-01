@@ -105,6 +105,24 @@ export function ProfileEditModal({
         profilePictureUrl = publicUrl;
       }
 
+      // Update profiles table
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          display_name: displayName || null,
+          gender: gender || null,
+          profile_picture_url: profilePictureUrl || null,
+        })
+        .eq("id", user.id);
+
+      if (profileError) {
+        console.error("Error updating profile:", profileError);
+        alert(`Failed to update profile: ${profileError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      // Also update user metadata for backward compatibility
       const updatedMetadata = {
         ...(user?.user_metadata || {}),
         display_name: displayName || null,
@@ -112,33 +130,10 @@ export function ProfileEditModal({
         profile_picture: profilePictureUrl || null,
       };
 
-      // Update user metadata
-      const { error } = await supabase.auth.updateUser({
+      await supabase.auth.updateUser({
         data: updatedMetadata,
       });
 
-      // Also update profiles table
-      if (!error) {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({
-            display_name: displayName || null,
-            gender: gender || null,
-            profile_picture: profilePictureUrl || null,
-          })
-          .eq("id", user.id);
-
-        if (profileError) {
-          console.error("Failed to update profile table:", profileError);
-        }
-      }
-
-      if (error) {
-        console.error("Error updating profile:", error);
-        alert(`Failed to update profile: ${error.message}`);
-        setLoading(false);
-        return;
-      }
 
       // Refresh session to ensure metadata is updated
       await supabase.auth.refreshSession();

@@ -28,20 +28,61 @@ export async function createServerClient() {
 export async function getUserDetails(userId: string) {
   const supabase = await createServerClient();
 
-  const { data, error } = await supabase
-    .from("user_details_view")
-    .select(
-      "user_id, email, join_date, display_name, gender, country_code, user_number, subscribed, favorite_characters_count, lists_count, list_items_count"
-    )
-    .eq("user_id", userId)
+  // Get profile data
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, email, display_name, gender, country_code, user_number, subscribed, created_at")
+    .eq("id", userId)
     .maybeSingle();
 
-  if (error) {
-    console.error("Error fetching user details:", error);
-    throw error;
+  if (profileError) {
+    console.error("Error fetching profile:", profileError);
+    throw profileError;
   }
 
-  return data;
+  if (!profile) {
+    return null;
+  }
+
+  // Get user lists first to count list items
+  const { data: userLists } = await supabase
+    .from("user_lists")
+    .select("id")
+    .eq("user_id", userId);
+
+  const listIds = userLists?.map(list => list.id) || [];
+
+  // Get counts
+  const [favoritesResult, listsResult, listItemsResult] = await Promise.all([
+    supabase
+      .from("favorite_characters")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
+    supabase
+      .from("user_lists")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
+    listIds.length > 0
+      ? supabase
+          .from("list_items")
+          .select("id", { count: "exact", head: true })
+          .in("list_id", listIds)
+      : { count: 0, error: null },
+  ]);
+
+  return {
+    user_id: profile.id,
+    email: profile.email,
+    join_date: profile.created_at,
+    display_name: profile.display_name,
+    gender: profile.gender,
+    country_code: profile.country_code,
+    user_number: profile.user_number,
+    subscribed: profile.subscribed,
+    favorite_characters_count: favoritesResult.count || 0,
+    lists_count: listsResult.count || 0,
+    list_items_count: listItemsResult.count || 0,
+  };
 }
 
 export const createServerClientInstance = createServerClient;
