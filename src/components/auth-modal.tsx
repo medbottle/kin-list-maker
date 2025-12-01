@@ -68,23 +68,63 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
             console.error("Error fetching location:", error);
           }
           
-          const { error: updateError } = await supabase.auth.updateUser({
-            data: {
-              display_name: displayName.trim() || null,
-              user_number: userNumber,
-              location: location,
-              country_code: countryCode,
-            },
-          });
+          try {
+            // Small delay to ensure user record is fully committed
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // Create profile in profiles table
+            const { error: profileError } = await supabase
+              .from("profiles")
+              .insert({
+                id: data.user.id,
+                email: data.user.email || "",
+                display_name: displayName.trim() || null,
+                user_number: userNumber,
+                country_code: countryCode,
+              });
 
-          if (updateError) {
-            console.error("Failed to update user metadata:", updateError);
-            setError("Account created but failed to save profile information. Please try updating your profile after logging in.");
-          } else {
-            // Refresh session to ensure metadata is saved
-            await supabase.auth.refreshSession();
+            if (profileError) {
+              console.error("Failed to create profile:", profileError);
+              // Try upsert in case profile already exists
+              const { error: upsertError } = await supabase
+                .from("profiles")
+                .upsert({
+                  id: data.user.id,
+                  email: data.user.email || "",
+                  display_name: displayName.trim() || null,
+                  user_number: userNumber,
+                  country_code: countryCode,
+                }, {
+                  onConflict: "id",
+                });
+              
+              if (upsertError) {
+                console.error("Failed to upsert profile:", upsertError);
+                // Continue anyway - profile can be created later
+              }
+            }
+            
+            // Update user metadata
+            const { error: updateError } = await supabase.auth.updateUser({
+              data: {
+                display_name: displayName.trim() || null,
+                user_number: userNumber,
+                location: location,
+                country_code: countryCode,
+              },
+            });
+
+            if (updateError) {
+              console.error("Failed to update user metadata:", updateError);
+              setError("Account created but failed to save profile information. Please try updating your profile after logging in.");
+            } else {
+              await supabase.auth.refreshSession();
+              setError(null);
+            }
+          } catch (err: unknown) {
+            console.error("Error creating profile:", err);
+            // Don't fail signup if profile creation fails
             setError(null);
-            alert("Account created! Please log in.");
           }
           
           setMode("login");

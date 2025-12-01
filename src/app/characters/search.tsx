@@ -67,7 +67,7 @@ export default function CharacterSearch() {
 
   const refreshListCounts = useCallback(async () => {
     if (!user) return;
-    const counts = await loadCharacterListCounts(supabase);
+    const counts = await loadCharacterListCounts(supabase, user.id);
     setCharacterListCounts(counts);
   }, [user, supabase]);
 
@@ -80,9 +80,16 @@ export default function CharacterSearch() {
     }
 
     async function loadFavorites() {
+      if (!user) {
+        setFavoriteIds(new Set());
+        setFavoriteCount(0);
+        return;
+      }
+
       const { data } = await supabase
         .from("favorite_characters")
-        .select("character_id");
+        .select("character_id")
+        .eq("user_id", user.id);
 
       if (data) {
         const ids = new Set(data.map((fav) => fav.character_id));

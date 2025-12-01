@@ -13,7 +13,7 @@ import { CreateListModal } from "@/components/create-list-modal";
 import { AddToListModal } from "@/components/add-to-list-modal";
 import { DeleteListModal } from "@/components/delete-list-modal";
 import { RemoveFavoriteModal } from "@/components/remove-favorite-modal";
-import { extractProfileData, type ProfileData } from "@/lib/profile-utils";
+import { extractProfileData, getProfileData, type ProfileData } from "@/lib/profile-utils";
 import { getGeolocation } from "@/lib/geolocation";
 
 type FavoriteCharacter = {
@@ -75,7 +75,7 @@ export default function ProfilePage() {
     profilePicture: null,
     userNumber: null,
     countryCode: null,
-    location: null,
+    subscribed: false,
   });
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -85,52 +85,38 @@ export default function ProfilePage() {
     if (hasCheckedAuth.current) return;
     
     async function fetchAndUpdateLocation(userToSet: User): Promise<User> {
-      if (userToSet.user_metadata?.country_code) {
-        console.log("User already has country code, skipping geolocation fetch");
-        return userToSet;
-      }
-      
-      const needsLocation = !userToSet.user_metadata?.location;
-      const needsCountryCode = !userToSet.user_metadata?.country_code;
-      
-      if (!needsLocation && !needsCountryCode) {
+      // Check if profile exists and has country_code
+      const existingProfile = await getProfileData(supabase, userToSet.id);
+      if (existingProfile?.countryCode) {
         return userToSet;
       }
       
       try {
         const geoData = await getGeolocation();
-        console.log("Geolocation data:", geoData);
         
         if (!geoData.country || !geoData.countryCode) {
           return userToSet;
         }
         
-        const updatedMetadata = { ...userToSet.user_metadata };
-        if (needsLocation) updatedMetadata.location = geoData.country;
-        if (needsCountryCode) updatedMetadata.country_code = geoData.countryCode;
-        
-        const { error: updateError } = await supabase.auth.updateUser({
-          data: updatedMetadata,
-        });
+        // Update profiles table
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({ country_code: geoData.countryCode })
+          .eq("id", userToSet.id);
         
         if (updateError) {
-          console.error("Error updating user location/countryCode:", updateError);
+          console.error("Error updating profile country_code:", updateError);
           return userToSet;
         }
         
-        // Refresh session to ensure metadata is updated
-        await supabase.auth.refreshSession();
+        // Also update user metadata for backward compatibility
+        const updatedMetadata = { ...userToSet.user_metadata };
+        updatedMetadata.location = geoData.country;
+        updatedMetadata.country_code = geoData.countryCode;
         
-        // Wait a moment for the refresh to propagate
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        const { data: { user: updatedUser } } = await supabase.auth.getUser();
-        
-        if (updatedUser) {
-          console.log("Updated user metadata:", updatedUser.user_metadata);
-          console.log("Extracted profile data:", extractProfileData(updatedUser));
-          return updatedUser;
-        }
+        await supabase.auth.updateUser({
+          data: updatedMetadata,
+        });
         
         return userToSet;
       } catch (error) {
@@ -152,7 +138,16 @@ export default function ProfilePage() {
       
       const finalUser = await fetchAndUpdateLocation(userToSet);
       setUser(finalUser);
-      setProfileData(extractProfileData(finalUser));
+      
+      // Load profile data from profiles table
+      const profile = await getProfileData(supabase, finalUser.id);
+      if (profile) {
+        setProfileData(profile);
+      } else {
+        // Fallback to user metadata if profile doesn't exist
+        setProfileData(extractProfileData(finalUser));
+      }
+      
       setLoading(false);
       hasCheckedAuth.current = true;
       return finalUser;
@@ -168,27 +163,34 @@ export default function ProfilePage() {
         return;
       }
       if (event === "USER_UPDATED" && session) {
-        // Refresh session to get latest metadata
-        supabase.auth.refreshSession().then(() => {
+        // Refresh profile data from profiles table
+        const userId = session.user.id;
+        getProfileData(supabase, userId).then((profile) => {
+          if (profile) {
+            setProfileData(profile);
+          }
           supabase.auth.getUser().then(({ data: { user: updatedUser } }) => {
             if (updatedUser) {
               setUser(updatedUser);
-              setProfileData(extractProfileData(updatedUser));
             } else if (session.user) {
               setUser(session.user);
-              setProfileData(extractProfileData(session.user));
             }
           });
         });
       } else if (session && !hasCheckedAuth.current) {
         async function loadUserForSession() {
           const { data: { user: sessionUser } } = await supabase.auth.getUser();
+          const userId = sessionUser?.id || session?.user?.id;
+          if (userId) {
+            const profile = await getProfileData(supabase, userId);
+            if (profile) {
+              setProfileData(profile);
+            }
+          }
           if (sessionUser) {
             setUser(sessionUser);
-            setProfileData(extractProfileData(sessionUser));
           } else if (session?.user) {
             setUser(session.user);
-            setProfileData(extractProfileData(session.user));
           }
           setLoading(false);
           hasCheckedAuth.current = true;
@@ -209,6 +211,7 @@ export default function ProfilePage() {
       const { data: favoritesData } = await supabase
         .from("favorite_characters")
         .select("id, character_id, created_at")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (!favoritesData || favoritesData.length === 0) {
@@ -249,6 +252,7 @@ export default function ProfilePage() {
       const { data: listsData } = await supabase
         .from("user_lists")
         .select("*")
+        .eq("user_id", user.id)
         .order("updated_at", { ascending: false });
 
       if (!listsData || listsData.length === 0) {
@@ -382,6 +386,7 @@ export default function ProfilePage() {
       const { data: favoritesData } = await supabase
         .from("favorite_characters")
         .select("id, character_id, created_at")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (favoritesData && favoritesData.length > 0) {
@@ -415,6 +420,7 @@ export default function ProfilePage() {
       const { data: listsData } = await supabase
         .from("user_lists")
         .select("*")
+        .eq("user_id", user.id)
         .order("updated_at", { ascending: false });
 
       if (listsData && listsData.length > 0) {
@@ -539,7 +545,7 @@ export default function ProfilePage() {
               <div>
                 <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                   {profileData.displayName || user.email}
-                  {profileData.displayName && profileData.userNumber && (
+                  {profileData.userNumber && (
                     <span className="text-2xl text-gray-500 dark:text-gray-400 font-normal">
                       #{profileData.userNumber}
                     </span>
@@ -549,7 +555,6 @@ export default function ProfilePage() {
                       code={profileData.countryCode.toUpperCase()} 
                       style={{ width: "24px", height: "18px" }}
                       className="inline-block"
-                      title={profileData.location || ""}
                     />
                   ) : null}
                 </h1>
@@ -803,20 +808,11 @@ export default function ProfilePage() {
         currentGender={profileData.gender}
         currentProfilePicture={profileData.profilePicture}
         onUpdate={async () => {
-          // Wait a bit for the session to refresh
-          await new Promise(resolve => setTimeout(resolve, 100));
-          const { data: { user: updatedUser } } = await supabase.auth.getUser();
-          if (updatedUser) {
-            setUser(updatedUser);
-            setProfileData(extractProfileData(updatedUser));
-          } else {
-            // Fallback to session if getUser fails
-            const {
-              data: { session },
-            } = await supabase.auth.getSession();
-            if (session?.user) {
-              setUser(session.user);
-              setProfileData(extractProfileData(session.user));
+          // Reload profile data from profiles table
+          if (user) {
+            const profile = await getProfileData(supabase, user.id);
+            if (profile) {
+              setProfileData(profile);
             }
           }
         }}
