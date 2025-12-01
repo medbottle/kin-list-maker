@@ -29,15 +29,12 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const protectedRoutes = ["/profile", "/dashboard", "/characters"];
+  const protectedRoutes = ["/profile"];
 
   const isProtected = protectedRoutes.some((route) =>
     request.nextUrl.pathname.startsWith(route)
