@@ -81,10 +81,8 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
             console.error("Failed to update user metadata:", updateError);
             setError("Account created but failed to save profile information. Please try updating your profile after logging in.");
           } else {
-            // Refresh session to ensure metadata is saved
             await supabase.auth.refreshSession();
             setError(null);
-            alert("Account created! Please log in.");
           }
           
           setMode("login");
